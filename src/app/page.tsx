@@ -118,7 +118,7 @@ export default function HomePage() {
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, #1A1B1E 2%, rgba(26,27,30,.35) 26%, rgba(26,27,30,0) 55%)" }} />
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 140, background: "linear-gradient(to bottom, rgba(26,27,30,.85) 0%, rgba(26,27,30,0) 100%)" }} />
 
-        <div style={{ position: "relative", maxWidth: 1360, margin: "0 auto", padding: "96px 48px 128px", minHeight: "max(640px,90vh)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+        <div style={{ position: "relative", padding: "96px clamp(20px, 3.5vw, 84px) 128px", minHeight: "max(640px,90vh)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
           <div style={{ maxWidth: 580, display: "flex", flexDirection: "column", gap: 18, animation: "dorisHeroIn 900ms var(--ease-standard) both" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-secondary)" }}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#1A1B1E", background: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 10, whiteSpace: "nowrap" }}>🏆 AMAA Winner</span>Finale now streaming
@@ -144,7 +144,7 @@ export default function HomePage() {
       </section>
 
       {/* Shelves */}
-      <div style={{ position: "relative", zIndex: 2, maxWidth: 1360, margin: "-96px auto 0", padding: "0 48px 72px", display: "flex", flexDirection: "column", gap: 56 }}>
+      <div style={{ position: "relative", zIndex: 2, marginTop: -96, padding: "0 clamp(20px, 3.5vw, 84px) 72px", display: "flex", flexDirection: "column", gap: 56 }}>
 
         <section>
           <h2 style={{ margin: "0 0 20px", fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Continue watching</h2>
@@ -183,8 +183,8 @@ export default function HomePage() {
           {discussed.map((f) => <FilmCard key={f.id} film={f} />)}
         </Rail>
 
-        <section style={{ background: "linear-gradient(120deg, var(--surface-1), rgba(33,35,39,0) 85%)", border: "1px solid var(--border-subtle)", borderRadius: 20, padding: "26px 24px" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 18 }}>
+        <section>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Trending conversations</h2>
             <span style={{ fontSize: 12.5, color: "var(--text-tertiary)" }}>jump straight into the moment</span>
           </div>

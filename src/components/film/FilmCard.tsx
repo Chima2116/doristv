@@ -22,7 +22,6 @@ function PlusIcon() {
 }
 
 const iconBtn: CSSProperties = { width: 36, height: 36, flex: "none", borderRadius: "50%", border: "1px solid rgba(255,255,255,.28)", background: "none", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" };
-const badgeStyle: CSSProperties = { display: "inline-flex", alignItems: "center", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,.75)", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 3, padding: "3px 7px", letterSpacing: "0.02em" };
 
 /** Title baked directly into the artwork via a bottom scrim — MUBI-style, no separate caption below the card. */
 function TitleOverlay({ title, sub }: { title: string; sub: string }) {
@@ -36,16 +35,22 @@ function TitleOverlay({ title, sub }: { title: string; sub: string }) {
 
 interface Placement { left: number; top: number; width: number; }
 
-const EXPAND_SCALE = 1.12;
-const EST_PANEL_HEIGHT = 156;
+const EXPAND_SCALE = 1.08;
+const EST_PANEL_HEIGHT = 128;
+// How far the card is allowed to grow upward past its resting top edge. Capped low
+// on purpose: growing from dead centre (50/50) would reach ~70-90px above the
+// resting card at this scale, which is enough to punch through a section heading
+// sitting right above the row (typically ~20px away). This still reads as "grows
+// from the middle" — noticeably more up-and-down than a pure top-anchor — without
+// the collision.
+const MAX_UPWARD_GROWTH = 28;
 
 /**
  * Horizontally the card grows outward from its own centre — the MUBI feel, symmetric
  * left/right rather than anchoring a corner — clamped against the viewport edge only
- * when centring would overflow. Vertically it grows straight down from the resting
- * card's own top edge by default: a row's hover card should never reach upward into
- * whatever sits above it (a section heading, the row above), only flipping to grow
- * upward when there genuinely isn't room below the viewport.
+ * when centring would overflow. Vertically it grows mostly downward with a small,
+ * capped reach upward (see MAX_UPWARD_GROWTH) so it still feels centred without
+ * reaching into whatever sits directly above the row.
  */
 function computePlacement(rect: DOMRect, baseWidth: number, heightRatio: number): Placement {
   const width = Math.round(baseWidth * EXPAND_SCALE);
@@ -57,8 +62,9 @@ function computePlacement(rect: DOMRect, baseWidth: number, heightRatio: number)
   const restCenterX = rect.left + rect.width / 2;
   const left = Math.min(Math.max(restCenterX - width / 2, margin), Math.max(margin, vw - width - margin));
 
-  const fitsBelow = rect.top + totalHeight < vh - margin;
-  const top = fitsBelow ? rect.top : Math.max(margin, rect.bottom - totalHeight);
+  const upGrowth = Math.min(Math.max(totalHeight - rect.height, 0) / 2, MAX_UPWARD_GROWTH);
+  const idealTop = rect.top - upGrowth;
+  const top = Math.min(Math.max(idealTop, margin), Math.max(margin, vh - totalHeight - margin));
 
   return { left, top, width };
 }
@@ -171,31 +177,27 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
 
       <div
         style={{
-          padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 9,
+          padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 6,
           opacity: settled ? 1 : 0,
           transform: settled ? "translateY(0)" : "translateY(4px)",
           transition: "opacity 180ms 30ms var(--ease-standard), transform 180ms 30ms var(--ease-standard)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <button onClick={(e) => { e.stopPropagation(); onPlay(); }} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 34, border: "none", borderRadius: 999, background: "#fff", color: "#0B0B0C", fontWeight: 800, fontSize: 12, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer" }}>
+          <button onClick={(e) => { e.stopPropagation(); onPlay(); }} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 32, border: "none", borderRadius: 999, background: "#fff", color: "#0B0B0C", fontWeight: 800, fontSize: 12, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer" }}>
             <PlayIcon size={12} />Watch
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onToggleLater(); }} aria-label="Watch Later" title="Watch Later" style={{ ...iconBtn, width: 34, height: 34 }}>{inLater ? <CheckIcon /> : <PlusIcon />}</button>
-          <button onClick={(e) => { e.stopPropagation(); onToggleLike(); }} aria-label="Like" title="Like" style={{ ...iconBtn, width: 34, height: 34, background: liked ? "#fff" : "none", color: liked ? "#0B0B0C" : "#fff" }}>
+          <button onClick={(e) => { e.stopPropagation(); onToggleLater(); }} aria-label="Watch Later" title="Watch Later" style={{ ...iconBtn, width: 32, height: 32 }}>{inLater ? <CheckIcon /> : <PlusIcon />}</button>
+          <button onClick={(e) => { e.stopPropagation(); onToggleLike(); }} aria-label="Like" title="Like" style={{ ...iconBtn, width: 32, height: 32, background: liked ? "#fff" : "none", color: liked ? "#0B0B0C" : "#fff" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={THUMBS_UP_PATH} /></svg>
           </button>
         </div>
 
-        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45, color: "rgba(255,255,255,.75)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.synopsis}</p>
+        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: "rgba(255,255,255,.72)", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.synopsis}</p>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-          <span style={badgeStyle}>★ {rating(f)}</span>
-          <span style={badgeStyle}>{f.runtime}</span>
-          <span style={badgeStyle}>{f.year}</span>
-          <span style={badgeStyle}>{f.genre}</span>
-          <span style={{ ...badgeStyle, ...(f.trending ? { color: "#fff", background: "rgba(255,255,255,.14)" } : {}) }}>{f.trending ? "🔥 Trending" : `💬 ${f.comments}`}</span>
-        </div>
+        <span style={{ fontSize: 11.5, color: "rgba(255,255,255,.55)" }}>★ {rating(f)} · {f.runtime} · {f.year} · {f.genre}</span>
+
+        <span style={{ fontSize: 11.5, fontWeight: f.trending ? 700 : 500, color: f.trending ? "#fff" : "rgba(255,255,255,.55)" }}>{f.trending ? "🔥 Trending conversation" : `💬 ${f.comments} discussions`}</span>
       </div>
     </div>
   );

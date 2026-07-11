@@ -25,7 +25,7 @@ export function NavBar() {
 
   return (
     <div style={navBarStyle}>
-      <div style={{ maxWidth: 1360, margin: "0 auto", display: "flex", alignItems: "center", gap: 20, height: 64, padding: "0 28px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 20, height: 64, padding: "0 clamp(20px, 3.5vw, 84px)" }}>
         <button onClick={() => router.push("/")} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, letterSpacing: "-0.02em", color: "var(--text-primary)", padding: 0, whiteSpace: "nowrap" }}>
           DORIS<span style={{ color: "var(--accent)" }}> TV</span>
         </button>

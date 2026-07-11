@@ -48,9 +48,9 @@ function Rail({ title, sub, emoji, children }: { title: string; sub?: string; em
 function RankCard({ filmId, rank }: { filmId: number; rank: number }) {
   const f = film(filmId);
   return (
-    <div style={{ flex: "none", display: "flex", alignItems: "flex-end", gap: 2 }}>
-      <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 118, lineHeight: 0.7, letterSpacing: "-0.06em", color: "transparent", WebkitTextStroke: "2px rgba(255,255,255,.35)", marginRight: -8 }}>{rank}</span>
-      <RankedFilmCard film={f} width={140} />
+    <div style={{ flex: "none", display: "flex", alignItems: "flex-end", gap: 4 }}>
+      <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 128, lineHeight: 0.7, letterSpacing: "-0.06em", color: "transparent", WebkitTextStroke: "2px rgba(255,255,255,.35)", marginRight: -14 }}>{rank}</span>
+      <RankedFilmCard film={f} width={210} />
     </div>
   );
 }
@@ -158,9 +158,9 @@ export default function HomePage() {
           {[1, 4, 2, 7, 5].map((id, i) => <RankCard key={id} filmId={id} rank={i + 1} />)}
         </Rail>
 
-        <section style={{ display: "flex", gap: 32, alignItems: "center", background: "linear-gradient(120deg, var(--surface-1) 0%, rgba(33,35,39,0) 80%)", border: "1px solid var(--border-subtle)", borderRadius: 20, padding: 24, overflow: "hidden" }}>
-          <div style={{ position: "relative", flex: "none", width: 520, aspectRatio: "16/9", borderRadius: 16, overflow: "hidden", background: bg(1, "30%"), boxShadow: "0 20px 60px rgba(0,0,0,.5)" }}>
-            <span style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(10,11,13,.4), rgba(10,11,13,0))" }} />
+        <section style={{ display: "flex", gap: 28, alignItems: "center" }}>
+          <div style={{ position: "relative", flex: "none", width: 480, aspectRatio: "16/9", overflow: "hidden", background: bg(1, "30%") }}>
+            <span style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,0))" }} />
           </div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-secondary)" }}>Editor&rsquo;s Feature</span>

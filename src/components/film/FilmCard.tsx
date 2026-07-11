@@ -40,9 +40,12 @@ const EXPAND_SCALE = 1.12;
 const EST_PANEL_HEIGHT = 156;
 
 /**
- * Grows the card outward from its own centre — same feel as MUBI's hover pop — instead
- * of anchoring a corner and shooting off in one direction. Falls back to clamping
- * against the viewport edge (with a small margin) only when centring would overflow.
+ * Horizontally the card grows outward from its own centre — the MUBI feel, symmetric
+ * left/right rather than anchoring a corner — clamped against the viewport edge only
+ * when centring would overflow. Vertically it grows straight down from the resting
+ * card's own top edge by default: a row's hover card should never reach upward into
+ * whatever sits above it (a section heading, the row above), only flipping to grow
+ * upward when there genuinely isn't room below the viewport.
  */
 function computePlacement(rect: DOMRect, baseWidth: number, heightRatio: number): Placement {
   const width = Math.round(baseWidth * EXPAND_SCALE);
@@ -52,10 +55,10 @@ function computePlacement(rect: DOMRect, baseWidth: number, heightRatio: number)
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
 
   const restCenterX = rect.left + rect.width / 2;
-  const restCenterY = rect.top + rect.height / 2;
-
   const left = Math.min(Math.max(restCenterX - width / 2, margin), Math.max(margin, vw - width - margin));
-  const top = Math.min(Math.max(restCenterY - totalHeight / 2, margin), Math.max(margin, vh - totalHeight - margin));
+
+  const fitsBelow = rect.top + totalHeight < vh - margin;
+  const top = fitsBelow ? rect.top : Math.max(margin, rect.bottom - totalHeight);
 
   return { left, top, width };
 }

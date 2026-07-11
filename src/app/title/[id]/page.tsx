@@ -5,6 +5,7 @@ import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useNow } from "@/hooks/useNow";
 import { FilmCard } from "@/components/film/FilmCard";
+import { ShelfRow } from "@/components/film/ShelfRow";
 import { bg, film, rating, initials, naira, FILMS, TAGLINES, CREATOR_BIOS } from "@/lib/data";
 import { tierBadge } from "@/lib/uiStyles";
 
@@ -152,9 +153,9 @@ export default function FilmDetailPage() {
 
           <section>
             <h2 style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>More like this</h2>
-            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }} className="doris-scroll">
+            <ShelfRow>
               {moreLike.map((f) => <FilmCard key={f.id} film={f} showTierBadge />)}
-            </div>
+            </ShelfRow>
           </section>
         </div>
 

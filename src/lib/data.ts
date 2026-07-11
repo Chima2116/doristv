@@ -15,7 +15,20 @@ export interface Film {
   synopsis: string;
   language: string;
   trending?: boolean;
+  trailerUrl?: string;
 }
+
+/** Hover-preview clips (muted/looped, Netflix-style). Placeholder public sample footage
+ * standing in for real trailers until each film has its own cut — rotated across a small
+ * set of reliably-hosted CORS-enabled clips (the video element falls back to the still
+ * poster on any load error, see FilmCard's ExpandedCard). */
+const CLIP_A = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+const CLIP_B = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/friday.mp4";
+const CLIP_C = "https://vjs.zencdn.net/v/oceans.mp4";
+
+export const TRAILERS: Record<number, string> = {
+  1: CLIP_C, 2: CLIP_B, 3: CLIP_A, 4: CLIP_C, 5: CLIP_B, 6: CLIP_A, 7: CLIP_C, 8: CLIP_B,
+};
 
 export const IMGS: Record<number, string> = {
   1: "/films/film-weight-of-water.png",
@@ -44,14 +57,14 @@ export function rating(f: Film): string {
 }
 
 export const FILMS: Film[] = [
-  { id: 1, title: "The Weight of Water", tier: "free", runtime: "1h 38m", genre: "Drama", year: 2024, creator: "Kemi Adetiba", comments: 214, synopsis: "Yemisi left Makoko at seventeen and swore she would never come back. When her father's fishing boat is found empty on the lagoon, she returns to a community that remembers everything — and to the one secret the water has kept for her. Shot over two rainy seasons on the Lagos lagoon.", language: "English · Yoruba", trending: true },
-  { id: 2, title: "Third Mainland", tier: "rent", price: 800, runtime: "1h 52m", genre: "Thriller", year: 2025, creator: "C.J. Obasi", comments: 96, synopsis: "One night, one bridge, three strangers whose lives collide between the mainland and the island. A slow-burn Lagos thriller told almost entirely in real time.", language: "English" },
-  { id: 3, title: "Harmattan Bride", tier: "premium", runtime: "1h 41m", genre: "Romance", year: 2024, creator: "Amara Nwosu", comments: 71, synopsis: "A wedding photographer who has never believed in marriage takes one last job in Kano — during the driest harmattan in forty years.", language: "English · Hausa" },
-  { id: 4, title: "Danfo Nights", tier: "free", runtime: "1h 24m", genre: "Comedy", year: 2025, creator: "Seyi Ogunde", comments: 158, synopsis: "A broke university graduate inherits his uncle's danfo bus — and every debt, passenger, and ghost that comes with it.", language: "English · Yoruba · Pidgin" },
-  { id: 5, title: "The Tailor of Yaba", tier: "rent", price: 500, runtime: "1h 33m", genre: "Drama", year: 2023, creator: "Amara Nwosu", comments: 44, synopsis: "Fifty years at one sewing machine. When the market is scheduled for demolition, Baba Rasheed takes his final measurements.", language: "English · Yoruba" },
-  { id: 6, title: "Salt & Palm", tier: "free", runtime: "1h 47m", genre: "Family", year: 2024, creator: "Seyi Ogunde", comments: 62, synopsis: "Two half-sisters inherit their grandmother's palm oil business — and her rivalry with the neighbouring compound.", language: "English · Igbo" },
-  { id: 7, title: "Ojuelegba Junction", tier: "premium", runtime: "1h 29m", genre: "Anthology", year: 2025, creator: "C.J. Obasi", comments: 88, synopsis: "Five stories, one junction, twenty-four hours. An anthology of the city that never slows down.", language: "English · Pidgin", trending: true },
-  { id: 8, title: "Second Rain", tier: "free", runtime: "1h 36m", genre: "Drama", year: 2023, creator: "Kemi Adetiba", comments: 39, synopsis: "After the flood took the farm, the Adeyemi family waits for the second rain — the one that decides everything.", language: "English · Yoruba" },
+  { id: 1, title: "The Weight of Water", tier: "free", runtime: "1h 38m", genre: "Drama", year: 2024, creator: "Kemi Adetiba", comments: 214, synopsis: "Yemisi left Makoko at seventeen and swore she would never come back. When her father's fishing boat is found empty on the lagoon, she returns to a community that remembers everything — and to the one secret the water has kept for her. Shot over two rainy seasons on the Lagos lagoon.", language: "English · Yoruba", trending: true, trailerUrl: TRAILERS[1] },
+  { id: 2, title: "Third Mainland", tier: "rent", price: 800, runtime: "1h 52m", genre: "Thriller", year: 2025, creator: "C.J. Obasi", comments: 96, synopsis: "One night, one bridge, three strangers whose lives collide between the mainland and the island. A slow-burn Lagos thriller told almost entirely in real time.", language: "English", trailerUrl: TRAILERS[2] },
+  { id: 3, title: "Harmattan Bride", tier: "premium", runtime: "1h 41m", genre: "Romance", year: 2024, creator: "Amara Nwosu", comments: 71, synopsis: "A wedding photographer who has never believed in marriage takes one last job in Kano — during the driest harmattan in forty years.", language: "English · Hausa", trailerUrl: TRAILERS[3] },
+  { id: 4, title: "Danfo Nights", tier: "free", runtime: "1h 24m", genre: "Comedy", year: 2025, creator: "Seyi Ogunde", comments: 158, synopsis: "A broke university graduate inherits his uncle's danfo bus — and every debt, passenger, and ghost that comes with it.", language: "English · Yoruba · Pidgin", trailerUrl: TRAILERS[4] },
+  { id: 5, title: "The Tailor of Yaba", tier: "rent", price: 500, runtime: "1h 33m", genre: "Drama", year: 2023, creator: "Amara Nwosu", comments: 44, synopsis: "Fifty years at one sewing machine. When the market is scheduled for demolition, Baba Rasheed takes his final measurements.", language: "English · Yoruba", trailerUrl: TRAILERS[5] },
+  { id: 6, title: "Salt & Palm", tier: "free", runtime: "1h 47m", genre: "Family", year: 2024, creator: "Seyi Ogunde", comments: 62, synopsis: "Two half-sisters inherit their grandmother's palm oil business — and her rivalry with the neighbouring compound.", language: "English · Igbo", trailerUrl: TRAILERS[6] },
+  { id: 7, title: "Ojuelegba Junction", tier: "premium", runtime: "1h 29m", genre: "Anthology", year: 2025, creator: "C.J. Obasi", comments: 88, synopsis: "Five stories, one junction, twenty-four hours. An anthology of the city that never slows down.", language: "English · Pidgin", trending: true, trailerUrl: TRAILERS[7] },
+  { id: 8, title: "Second Rain", tier: "free", runtime: "1h 36m", genre: "Drama", year: 2023, creator: "Kemi Adetiba", comments: 39, synopsis: "After the flood took the farm, the Adeyemi family waits for the second rain — the one that decides everything.", language: "English · Yoruba", trailerUrl: TRAILERS[8] },
 ];
 
 export function film(id: number | null | undefined): Film {

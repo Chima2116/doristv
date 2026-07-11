@@ -110,9 +110,10 @@ button, input, textarea { font-family: var(--font-ui); }
 @keyframes dorisHeroIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @keyframes wlPop { 0% { transform: scale(1); } 45% { transform: scale(.7); } 100% { transform: scale(1); } }
 
-.doris-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
-.doris-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 8px; }
-.doris-scroll::-webkit-scrollbar-track { background: transparent; }
+/* Shelf rows scroll via touch swipe or the ShelfRow arrow buttons, not a visible
+   drag-bar — the native scrollbar is fully hidden across browsers. */
+.doris-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.doris-scroll::-webkit-scrollbar { display: none; }
 
 /* Global interactive feedback */
 button {

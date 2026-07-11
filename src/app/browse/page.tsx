@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useApp } from "@/lib/store";
-import { FilmCard } from "@/components/film/FilmCard";
+import { FilmCard, CARD_WIDTH } from "@/components/film/FilmCard";
 import { FILMS } from "@/lib/data";
 import { chipStyle } from "@/lib/uiStyles";
 
@@ -45,7 +45,7 @@ export default function BrowsePage() {
           <button onClick={clearFilters} style={{ minHeight: 42, padding: "0 20px", border: "none", borderRadius: 999, background: "var(--accent)", color: "var(--text-on-accent)", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>Clear search &amp; filters</button>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 240px)", gap: "20px 12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, ${CARD_WIDTH}px)`, gap: "24px 16px" }}>
           {films.map((f) => <FilmCard key={f.id} film={f} showTierBadge />)}
         </div>
       )}

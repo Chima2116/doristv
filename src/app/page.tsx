@@ -5,6 +5,7 @@ import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useHover } from "@/hooks/useHover";
 import { FilmCard, ContinueWatchingCard, RankedFilmCard, EditorsPickCard } from "@/components/film/FilmCard";
+import { ShelfRow } from "@/components/film/ShelfRow";
 import { bg, film, rating, initials, FILMS } from "@/lib/data";
 
 function HeroWatchLaterButton() {
@@ -40,7 +41,7 @@ function Rail({ title, sub, emoji, children }: { title: string; sub?: string; em
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>{emoji ? emoji + " " : ""}{title}</h2>
         {sub && <span style={{ fontSize: 12.5, color: "var(--text-tertiary)" }}>{sub}</span>}
       </div>
-      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }} className="doris-scroll">{children}</div>
+      <ShelfRow>{children}</ShelfRow>
     </section>
   );
 }
@@ -50,7 +51,7 @@ function RankCard({ filmId, rank }: { filmId: number; rank: number }) {
   return (
     <div style={{ flex: "none", display: "flex", alignItems: "flex-end", gap: 4 }}>
       <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 128, lineHeight: 0.7, letterSpacing: "-0.06em", color: "transparent", WebkitTextStroke: "2px rgba(255,255,255,.35)", marginRight: -14 }}>{rank}</span>
-      <RankedFilmCard film={f} width={210} />
+      <RankedFilmCard film={f} />
     </div>
   );
 }
@@ -148,21 +149,23 @@ export default function HomePage() {
 
         <section>
           <h2 style={{ margin: "0 0 20px", fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Continue watching</h2>
-          <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }} className="doris-scroll">
+          <ShelfRow>
             <ContinueWatchingCard filmId={1} progress={0.43} at={2530} />
             <ContinueWatchingCard filmId={4} progress={0.12} at={610} />
-          </div>
+          </ShelfRow>
         </section>
 
         <Rail title="Trending this week" sub="what Nigeria is watching now">
           {[1, 4, 2, 7, 5].map((id, i) => <RankCard key={id} filmId={id} rank={i + 1} />)}
         </Rail>
 
-        <section style={{ display: "flex", gap: 28, alignItems: "center" }}>
-          <div style={{ position: "relative", flex: "none", width: 480, aspectRatio: "16/9", overflow: "hidden", background: bg(1, "30%") }}>
-            <span style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(0,0,0,.35), rgba(0,0,0,0))" }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Full-bleed spotlight banner — image is the whole backdrop, text sits on a
+            gradient scrim over it, so there's no leftover dead space beside a boxed still. */}
+        <section style={{ position: "relative", width: "100%", minHeight: 420, overflow: "hidden", display: "flex", alignItems: "center", borderRadius: 4 }}>
+          <span style={{ position: "absolute", inset: 0, background: bg(1, "35%") }} />
+          <span style={{ position: "absolute", inset: 0, background: "linear-gradient(100deg, rgba(26,27,30,.97) 0%, rgba(26,27,30,.86) 30%, rgba(26,27,30,.4) 60%, rgba(26,27,30,.08) 100%)" }} />
+          <span style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(26,27,30,.55) 0%, rgba(26,27,30,0) 35%)" }} />
+          <div style={{ position: "relative", padding: "56px 0", maxWidth: 560, display: "flex", flexDirection: "column", gap: 14 }}>
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-secondary)" }}>Editor&rsquo;s Feature</span>
             <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.02em" }}>{editorial.title}</h3>
             <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--text-secondary)", maxWidth: 480 }}>{editorial.synopsis}</p>

@@ -1,12 +1,17 @@
 "use client";
 
-import { CSSProperties, ReactNode } from "react";
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useCardExpand } from "@/hooks/useCardExpand";
 import { bg, film, rating, type Film } from "@/lib/data";
 import { tierBadge } from "@/lib/uiStyles";
+
+/** Every movie card on Doris shares one footprint — Editor's Picks set the standard. */
+export const CARD_WIDTH = 380;
+export const CARD_ASPECT = "16 / 10";
+export const CARD_HEIGHT_RATIO = 10 / 16;
 
 /** Lucide `thumbs-up` — not a heart. Doris "Like" is an endorsement, not a favourite. */
 const THUMBS_UP_PATH = "M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z";
@@ -152,6 +157,38 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
   const left = settled ? placement.left : rect.left;
   const top = settled ? placement.top : rect.top;
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoError, setVideoError] = useState(false);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (!settled) { v.pause(); v.currentTime = 0; return; }
+
+    let cancelled = false;
+    let retriesLeft = 4;
+    // Chrome's own intersection tracker for muted, audioless video needs a paint cycle to
+    // confirm the element is on-screen before it'll actually keep playing — call play() too
+    // early (right as the portal mounts) and it silently re-pauses with "video-only
+    // background media was paused to save power," and won't retry on its own. So: listen
+    // for any pause while we're still meant to be hovered and keep retrying briefly.
+    const tryPlay = () => {
+      if (cancelled) return;
+      v.play().catch((err: DOMException) => {
+        if (cancelled || retriesLeft <= 0 || err.name !== "AbortError") return;
+        retriesLeft -= 1;
+        setTimeout(tryPlay, 150);
+      });
+    };
+    const onUnexpectedPause = () => {
+      if (cancelled || retriesLeft <= 0) return;
+      retriesLeft -= 1;
+      setTimeout(tryPlay, 150);
+    };
+    v.addEventListener("pause", onUnexpectedPause);
+    tryPlay();
+    return () => { cancelled = true; v.removeEventListener("pause", onUnexpectedPause); };
+  }, [settled]);
+
   return (
     <div
       onMouseEnter={onMouseEnter}
@@ -172,6 +209,18 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
         aria-label={`${f.title} — view details`}
       >
         <span style={{ position: "absolute", inset: -4, transform: settled ? "scale(1.045)" : "scale(1)", transition: "transform 220ms var(--ease-standard)", background: bg(f.id, "40%") }} />
+        {f.trailerUrl && !videoError && (
+          <video
+            ref={videoRef}
+            src={f.trailerUrl}
+            muted
+            loop
+            playsInline
+            preload="none"
+            onError={() => setVideoError(true)}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: settled ? 1 : 0, transition: "opacity 260ms var(--ease-standard)", pointerEvents: "none" }}
+          />
+        )}
         {poster}
       </button>
 
@@ -212,7 +261,7 @@ interface FilmCardProps {
 }
 
 /** The signature poster card — Home shelves, Browse, My Stuff lists, creator profiles. */
-export function FilmCard({ film: f, width = 240, topLeftBadge, topRightBadge, showTierBadge }: FilmCardProps) {
+export function FilmCard({ film: f, width = CARD_WIDTH, topLeftBadge, topRightBadge, showTierBadge }: FilmCardProps) {
   const { rentOrPlay } = useFilmActions();
   const tb = tierBadge(f, true);
   const poster = (
@@ -224,11 +273,11 @@ export function FilmCard({ film: f, width = 240, topLeftBadge, topRightBadge, sh
       {topRightBadge}
     </>
   );
-  return <MediaCard f={f} width={width} cssAspect="6 / 7" heightRatio={7 / 6} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
+  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
 }
 
-/** The 16:9 Continue Watching card — same hover interaction, still-frame artwork + resume progress. */
-export function ContinueWatchingCard({ filmId, progress, at, width = 340 }: { filmId: number; progress: number; at: number; width?: number }) {
+/** Continue Watching card — same footprint as every other card, still-frame artwork + resume progress. */
+export function ContinueWatchingCard({ filmId, progress, at, width = CARD_WIDTH }: { filmId: number; progress: number; at: number; width?: number }) {
   const f = film(filmId);
   const { openPlayer } = useFilmActions();
   const leftLabel = Math.round((1 - progress) * 98) + " min left";
@@ -241,11 +290,11 @@ export function ContinueWatchingCard({ filmId, progress, at, width = 340 }: { fi
       </span>
     </>
   );
-  return <MediaCard f={f} width={width} cssAspect="16 / 9" heightRatio={9 / 16} poster={poster} onPlay={() => openPlayer(f.id, at)} />;
+  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => openPlayer(f.id, at)} />;
 }
 
-/** Poster used inside the ranked "Trending this week" numeral row — same hover interaction, narrower default width. */
-export function RankedFilmCard({ film: f, width = 140 }: { film: Film; width?: number }) {
+/** Poster used inside the ranked "Trending this week" numeral row — same footprint as every other card. */
+export function RankedFilmCard({ film: f, width = CARD_WIDTH }: { film: Film; width?: number }) {
   const { rentOrPlay } = useFilmActions();
   const poster = (
     <>
@@ -253,11 +302,11 @@ export function RankedFilmCard({ film: f, width = 140 }: { film: Film; width?: n
       <TitleOverlay title={f.title} sub={`${f.creator} · ${f.year}`} />
     </>
   );
-  return <MediaCard f={f} width={width} cssAspect="6 / 7" heightRatio={7 / 6} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
+  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
 }
 
-/** Landscape editorial spotlight card — Home's "Editor's picks" rail. Same hover interaction. */
-export function EditorsPickCard({ film: f, note, width = 380 }: { film: Film; note: string; width?: number }) {
+/** Landscape editorial spotlight card — Home's "Editor's picks" rail. The reference size every other card matches. */
+export function EditorsPickCard({ film: f, note, width = CARD_WIDTH }: { film: Film; note: string; width?: number }) {
   const { rentOrPlay } = useFilmActions();
   const poster = (
     <>
@@ -268,5 +317,5 @@ export function EditorsPickCard({ film: f, note, width = 380 }: { film: Film; no
       </span>
     </>
   );
-  return <MediaCard f={f} width={width} cssAspect="16 / 10" heightRatio={10 / 16} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
+  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
 }

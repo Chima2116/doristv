@@ -6,7 +6,7 @@ import { useFilmActions } from "@/lib/actions";
 import { useNow } from "@/hooks/useNow";
 import { film, rating, Film } from "@/lib/data";
 import { chipStyle, segStyle } from "@/lib/uiStyles";
-import { FilmCard } from "@/components/film/FilmCard";
+import { FilmCard, CARD_WIDTH } from "@/components/film/FilmCard";
 
 type Tab = "later" | "rentals" | "downloads";
 type Filter = "All" | "Movies" | "Short Films" | "Free" | "Premium";
@@ -49,7 +49,7 @@ function EmptyBlock({ title, body, cta, onCta }: { title: string; body: string; 
   );
 }
 
-const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill, 240px)", gap: "20px 12px" };
+const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: `repeat(auto-fill, ${CARD_WIDTH}px)`, gap: "24px 16px" };
 
 export default function MyStuffPage() {
   const { router } = useFilmActions();

@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
-import { FilmCard } from "@/components/film/FilmCard";
+import { FilmCard, CARD_WIDTH } from "@/components/film/FilmCard";
 import { FILMS, initials, CREATOR_DB } from "@/lib/data";
 
 const ACTIVITY = [
@@ -48,7 +48,7 @@ export default function CreatorProfilePage() {
 
       <section>
         <h2 style={{ margin: "0 0 14px", fontSize: 20, fontWeight: 700 }}>Films by {name}</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 240px)", gap: "20px 12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, ${CARD_WIDTH}px)`, gap: "24px 16px" }}>
           {films.map((f) => <FilmCard key={f.id} film={f} showTierBadge />)}
         </div>
       </section>

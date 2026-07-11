@@ -34,28 +34,30 @@ function TitleOverlay({ title, sub }: { title: string; sub: string }) {
   );
 }
 
-interface Placement { left: number; top: number; width: number; originX: "left" | "right"; originY: "top" | "bottom"; }
+interface Placement { left: number; top: number; width: number; }
 
-const EXPAND_SCALE = 1.2;
-const EST_PANEL_HEIGHT = 210;
+const EXPAND_SCALE = 1.12;
+const EST_PANEL_HEIGHT = 156;
 
-/** Decides which edge the expanded card grows from so it never spills off-screen. */
+/**
+ * Grows the card outward from its own centre — same feel as MUBI's hover pop — instead
+ * of anchoring a corner and shooting off in one direction. Falls back to clamping
+ * against the viewport edge (with a small margin) only when centring would overflow.
+ */
 function computePlacement(rect: DOMRect, baseWidth: number, heightRatio: number): Placement {
   const width = Math.round(baseWidth * EXPAND_SCALE);
-  const posterHeight = width * heightRatio;
+  const totalHeight = width * heightRatio + EST_PANEL_HEIGHT;
   const margin = 16;
   const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
 
-  const overflowsRight = rect.left + width > vw - margin;
-  const originX = overflowsRight ? "right" : "left";
-  const left = overflowsRight ? Math.max(margin, rect.right - width) : rect.left;
+  const restCenterX = rect.left + rect.width / 2;
+  const restCenterY = rect.top + rect.height / 2;
 
-  const fitsBelow = rect.top + posterHeight + EST_PANEL_HEIGHT < vh - margin;
-  const originY = fitsBelow ? "top" : "bottom";
-  const top = fitsBelow ? rect.top : Math.max(margin, rect.bottom - posterHeight - EST_PANEL_HEIGHT);
+  const left = Math.min(Math.max(restCenterX - width / 2, margin), Math.max(margin, vw - width - margin));
+  const top = Math.min(Math.max(restCenterY - totalHeight / 2, margin), Math.max(margin, vh - totalHeight - margin));
 
-  return { left, top, width, originX, originY };
+  return { left, top, width };
 }
 
 interface MediaCardProps {
@@ -151,7 +153,6 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
         background: "#0B0B0C",
         opacity: settled ? 1 : 0,
         boxShadow: settled ? "0 24px 56px rgba(0,0,0,.55)" : "var(--shadow-1)",
-        transformOrigin: `${placement.originX} ${placement.originY}`,
         transition: "left 200ms var(--ease-standard), top 200ms var(--ease-standard), width 200ms var(--ease-standard), opacity 180ms var(--ease-standard), box-shadow 200ms var(--ease-standard)",
         fontFamily: "var(--font-ui)", color: "var(--text-primary)", cursor: "default",
       }}
@@ -167,25 +168,25 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
 
       <div
         style={{
-          padding: "16px 16px 18px", display: "flex", flexDirection: "column", gap: 12,
+          padding: "12px 14px 14px", display: "flex", flexDirection: "column", gap: 9,
           opacity: settled ? 1 : 0,
           transform: settled ? "translateY(0)" : "translateY(4px)",
           transition: "opacity 180ms 30ms var(--ease-standard), transform 180ms 30ms var(--ease-standard)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={(e) => { e.stopPropagation(); onPlay(); }} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, height: 38, border: "none", borderRadius: 999, background: "#fff", color: "#0B0B0C", fontWeight: 800, fontSize: 12.5, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer" }}>
-            <PlayIcon />Watch
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <button onClick={(e) => { e.stopPropagation(); onPlay(); }} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, height: 34, border: "none", borderRadius: 999, background: "#fff", color: "#0B0B0C", fontWeight: 800, fontSize: 12, letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer" }}>
+            <PlayIcon size={12} />Watch
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onToggleLater(); }} aria-label="Watch Later" title="Watch Later" style={iconBtn}>{inLater ? <CheckIcon /> : <PlusIcon />}</button>
-          <button onClick={(e) => { e.stopPropagation(); onToggleLike(); }} aria-label="Like" title="Like" style={{ ...iconBtn, background: liked ? "#fff" : "none", color: liked ? "#0B0B0C" : "#fff" }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={THUMBS_UP_PATH} /></svg>
+          <button onClick={(e) => { e.stopPropagation(); onToggleLater(); }} aria-label="Watch Later" title="Watch Later" style={{ ...iconBtn, width: 34, height: 34 }}>{inLater ? <CheckIcon /> : <PlusIcon />}</button>
+          <button onClick={(e) => { e.stopPropagation(); onToggleLike(); }} aria-label="Like" title="Like" style={{ ...iconBtn, width: 34, height: 34, background: liked ? "#fff" : "none", color: liked ? "#0B0B0C" : "#fff" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={THUMBS_UP_PATH} /></svg>
           </button>
         </div>
 
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: "rgba(255,255,255,.8)", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.synopsis}</p>
+        <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.45, color: "rgba(255,255,255,.75)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{f.synopsis}</p>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
           <span style={badgeStyle}>★ {rating(f)}</span>
           <span style={badgeStyle}>{f.runtime}</span>
           <span style={badgeStyle}>{f.year}</span>
@@ -236,4 +237,31 @@ export function ContinueWatchingCard({ filmId, progress, at, width = 340 }: { fi
     </>
   );
   return <MediaCard f={f} width={width} cssAspect="16 / 9" heightRatio={9 / 16} poster={poster} onPlay={() => openPlayer(f.id, at)} />;
+}
+
+/** Poster used inside the ranked "Trending this week" numeral row — same hover interaction, narrower default width. */
+export function RankedFilmCard({ film: f, width = 140 }: { film: Film; width?: number }) {
+  const { rentOrPlay } = useFilmActions();
+  const poster = (
+    <>
+      <span style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,.05) 55%, rgba(0,0,0,.15))" }} />
+      <TitleOverlay title={f.title} sub={`${f.creator} · ${f.year}`} />
+    </>
+  );
+  return <MediaCard f={f} width={width} cssAspect="6 / 7" heightRatio={7 / 6} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
+}
+
+/** Landscape editorial spotlight card — Home's "Editor's picks" rail. Same hover interaction. */
+export function EditorsPickCard({ film: f, note, width = 380 }: { film: Film; note: string; width?: number }) {
+  const { rentOrPlay } = useFilmActions();
+  const poster = (
+    <>
+      <span style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,.9), rgba(0,0,0,.08) 60%)" }} />
+      <span style={{ position: "absolute", left: 16, right: 16, bottom: 14, zIndex: 2 }}>
+        <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18, letterSpacing: "-0.01em", textTransform: "uppercase", color: "#fff", textShadow: "0 1px 12px rgba(0,0,0,.6)" }}>{f.title}</span>
+        <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,.72)", marginTop: 4, lineHeight: 1.5 }}>{note}</span>
+      </span>
+    </>
+  );
+  return <MediaCard f={f} width={width} cssAspect="16 / 10" heightRatio={10 / 16} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
 }

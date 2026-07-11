@@ -63,6 +63,24 @@ export function useCardExpand<T extends HTMLElement>() {
 
   useEffect(() => () => { clearCloseTimers(); clearEnterTimer(); }, []);
 
+  // The portal is `position: fixed` at a viewport coordinate captured once when it
+  // opens (needed to escape the horizontally-scrolling shelf rows' overflow clipping).
+  // That means it does NOT move with the page on scroll, while the real card underneath
+  // does — so it visibly drifts away from the film it belongs to. Close immediately
+  // (skip the hover-out grace delay) the moment any scroll happens, on window or any
+  // scrollable ancestor (capture:true catches the shelf rows' own horizontal scroll too).
+  useEffect(() => {
+    if (phase === "idle") return;
+    const handleScroll = () => {
+      clearCloseTimers();
+      clearEnterTimer();
+      setPhase((p) => (p === "idle" ? p : "leaving"));
+      exitTimer.current = setTimeout(() => setPhase("idle"), EXIT_DURATION);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [phase]);
+
   return {
     triggerRef,
     active: phase !== "idle",

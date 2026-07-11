@@ -4,7 +4,7 @@ import { CSSProperties } from "react";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useHover } from "@/hooks/useHover";
-import { FilmCard, ContinueWatchingCard } from "@/components/film/FilmCard";
+import { FilmCard, ContinueWatchingCard, RankedFilmCard, EditorsPickCard } from "@/components/film/FilmCard";
 import { bg, film, rating, initials, FILMS } from "@/lib/data";
 
 function HeroWatchLaterButton() {
@@ -47,33 +47,11 @@ function Rail({ title, sub, emoji, children }: { title: string; sub?: string; em
 
 function RankCard({ filmId, rank }: { filmId: number; rank: number }) {
   const f = film(filmId);
-  const { openDetail } = useFilmActions();
-  const { style: wrapStyle, handlers } = useHover({ flex: "none", display: "flex", alignItems: "flex-end", gap: 2, background: "none", border: "none", padding: "0 8px 0 0", cursor: "pointer", textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)", transition: "transform 220ms var(--ease-standard)" } as CSSProperties, { transform: "translateY(-6px)" });
   return (
-    <button onClick={() => openDetail(f.id)} style={wrapStyle} {...handlers}>
+    <div style={{ flex: "none", display: "flex", alignItems: "flex-end", gap: 2 }}>
       <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 118, lineHeight: 0.7, letterSpacing: "-0.06em", color: "transparent", WebkitTextStroke: "2px rgba(255,255,255,.35)", marginRight: -8 }}>{rank}</span>
-      <span style={{ position: "relative", display: "block", width: 130, aspectRatio: "2/3", borderRadius: 10, overflow: "hidden", background: bg(f.id, "40%"), boxShadow: "0 2px 10px rgba(0,0,0,.35)" }}>
-        <span style={{ position: "absolute", inset: 0, background: "var(--gradient-card)" }} />
-      </span>
-    </button>
-  );
-}
-
-function EditorsPickCard({ filmId, note }: { filmId: number; note: string }) {
-  const f = film(filmId);
-  const { openDetail } = useFilmActions();
-  const { style: cardStyle, handlers: cardHandlers } = useHover({ flex: "none", width: 400, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)", transition: "transform 220ms var(--ease-standard)" } as CSSProperties, { transform: "translateY(-6px)" });
-  const { style: stillStyle, handlers: stillHandlers } = useHover({ position: "relative", display: "block", width: "100%", aspectRatio: "16/9", borderRadius: 14, overflow: "hidden", background: bg(f.id), boxShadow: "0 2px 12px rgba(0,0,0,.4)", transition: "box-shadow 220ms var(--ease-standard)" } as CSSProperties, { boxShadow: "0 20px 48px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.14)" });
-  return (
-    <button onClick={() => openDetail(f.id)} style={cardStyle} {...cardHandlers}>
-      <span style={stillStyle} {...stillHandlers}>
-        <span style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(10,11,13,.9), rgba(10,11,13,.1) 65%)" }} />
-        <span style={{ position: "absolute", left: 16, right: 16, bottom: 16 }}>
-          <span style={{ display: "block", fontSize: 17, fontWeight: 800, letterSpacing: "-0.01em" }}>{f.title}</span>
-          <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,.7)", marginTop: 4, lineHeight: 1.5 }}>{note}</span>
-        </span>
-      </span>
-    </button>
+      <RankedFilmCard film={f} width={140} />
+    </div>
   );
 }
 
@@ -196,9 +174,9 @@ export default function HomePage() {
         </section>
 
         <Rail title="Editor's picks" sub="hand-selected by the DORIS team">
-          <EditorsPickCard filmId={3} note={film(3).synopsis.slice(0, 88) + "…"} />
-          <EditorsPickCard filmId={7} note={film(7).synopsis.slice(0, 88) + "…"} />
-          <EditorsPickCard filmId={1} note={film(1).synopsis.slice(0, 88) + "…"} />
+          <EditorsPickCard film={film(3)} note={film(3).synopsis.slice(0, 88) + "…"} />
+          <EditorsPickCard film={film(7)} note={film(7).synopsis.slice(0, 88) + "…"} />
+          <EditorsPickCard film={film(1)} note={film(1).synopsis.slice(0, 88) + "…"} />
         </Rail>
 
         <Rail title="Most discussed" sub="where the conversation is happening" emoji="💬">

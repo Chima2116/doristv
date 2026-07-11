@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, ReactNode } from "react";
+import type { PublishedFilm } from "@/lib/uploadTypes";
 
 type PayMethod = "card" | "bank" | "ussd";
 
@@ -15,7 +16,7 @@ interface AppState {
   pay: "form" | "success" | null;
   payFilmId: number | null;
   payMethod: PayMethod;
-  uploads: { title: string }[];
+  publishedFilms: PublishedFilm[];
 }
 
 interface AppContextValue extends AppState {
@@ -30,7 +31,9 @@ interface AppContextValue extends AppState {
   closePay: () => void;
   setPayMethod: (m: PayMethod) => void;
   confirmPay: () => void;
-  addUpload: (title: string) => void;
+  publishFilm: (film: PublishedFilm) => void;
+  getPublishedFilm: (id: string) => PublishedFilm | undefined;
+  updateFilm: (id: string, patch: Partial<PublishedFilm>) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -46,7 +49,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pay, setPay] = useState<"form" | "success" | null>(null);
   const [payFilmId, setPayFilmId] = useState<number | null>(null);
   const [payMethod, setPayMethod] = useState<PayMethod>("card");
-  const [uploads, setUploads] = useState<{ title: string }[]>([]);
+  const [publishedFilms, setPublishedFilms] = useState<PublishedFilm[]>([]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -97,16 +100,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return id;
     });
   }, []);
-  const addUpload = useCallback((title: string) => {
-    setUploads((prev) => [{ title }, ...prev]);
+  const publishFilm = useCallback((film: PublishedFilm) => {
+    setPublishedFilms((prev) => [film, ...prev.filter((f) => f.id !== film.id)]);
+  }, []);
+  const getPublishedFilm = useCallback((id: string) => publishedFilms.find((f) => f.id === id), [publishedFilms]);
+  const updateFilm = useCallback((id: string, patch: Partial<PublishedFilm>) => {
+    setPublishedFilms((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   }, []);
 
   const value = useMemo<AppContextValue>(() => ({
-    watchLater, rented, likedFilms, followedSet, downloaded, searchQ, toast, pay, payFilmId, payMethod, uploads,
+    watchLater, rented, likedFilms, followedSet, downloaded, searchQ, toast, pay, payFilmId, payMethod, publishedFilms,
     toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, toggleDownload, setSearchQ, showToast,
-    openPay, closePay, setPayMethod, confirmPay, addUpload,
-  }), [watchLater, rented, likedFilms, followedSet, downloaded, searchQ, toast, pay, payFilmId, payMethod, uploads,
-    toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, toggleDownload, showToast, openPay, closePay, confirmPay, addUpload]);
+    openPay, closePay, setPayMethod, confirmPay, publishFilm, getPublishedFilm, updateFilm,
+  }), [watchLater, rented, likedFilms, followedSet, downloaded, searchQ, toast, pay, payFilmId, payMethod, publishedFilms,
+    toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, toggleDownload, showToast, openPay, closePay, confirmPay, publishFilm, getPublishedFilm, updateFilm]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

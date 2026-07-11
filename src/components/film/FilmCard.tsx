@@ -77,10 +77,13 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay }: MediaCa
   const liked = !!likedFilms[f.id];
   const placement = rect ? computePlacement(rect, width, heightRatio) : null;
 
-  // Stays fully visible even while the portal is open — the expanded card is always
-  // at least as big and paints above it (z-index), so it's covered, not hidden. If the
-  // portal ever fails to mount, the plain card stays put instead of vanishing.
-  const restingStyle: CSSProperties = { flex: "none", width, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)", pointerEvents: active ? "none" : "auto" };
+  // Stays fully visible AND interactive even while the portal is open. The portal is
+  // always at least as big and paints above it via z-index, so the browser's normal
+  // stacking-order hit-testing routes the mouse to the portal automatically — no need
+  // to toggle pointer-events (doing so on a covered element can itself trigger a
+  // synthetic mouseleave in some browsers, closing the card moments after it opens).
+  // If the portal ever fails to mount, the plain card stays put instead of vanishing.
+  const restingStyle: CSSProperties = { flex: "none", width, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)" };
 
   return (
     <div

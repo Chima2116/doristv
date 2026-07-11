@@ -48,7 +48,7 @@ export default function CreatorProfilePage() {
 
       <section>
         <h2 style={{ margin: "0 0 14px", fontSize: 20, fontWeight: 700 }}>Films by {name}</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 210px)", gap: "44px 28px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 240px)", gap: "20px 12px" }}>
           {films.map((f) => <FilmCard key={f.id} film={f} showTierBadge />)}
         </div>
       </section>

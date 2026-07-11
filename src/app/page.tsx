@@ -40,7 +40,7 @@ function Rail({ title, sub, emoji, children }: { title: string; sub?: string; em
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>{emoji ? emoji + " " : ""}{title}</h2>
         {sub && <span style={{ fontSize: 12.5, color: "var(--text-tertiary)" }}>{sub}</span>}
       </div>
-      <div style={{ display: "flex", gap: 28, overflowX: "auto", paddingBottom: 4 }} className="doris-scroll">{children}</div>
+      <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }} className="doris-scroll">{children}</div>
     </section>
   );
 }
@@ -166,11 +166,11 @@ export default function HomePage() {
       </section>
 
       {/* Shelves */}
-      <div style={{ position: "relative", zIndex: 2, maxWidth: 1360, margin: "-96px auto 0", padding: "0 48px 72px", display: "flex", flexDirection: "column", gap: 68 }}>
+      <div style={{ position: "relative", zIndex: 2, maxWidth: 1360, margin: "-96px auto 0", padding: "0 48px 72px", display: "flex", flexDirection: "column", gap: 56 }}>
 
         <section>
           <h2 style={{ margin: "0 0 20px", fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Continue watching</h2>
-          <div style={{ display: "flex", gap: 28, overflowX: "auto", paddingBottom: 4 }} className="doris-scroll">
+          <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }} className="doris-scroll">
             <ContinueWatchingCard filmId={1} progress={0.43} at={2530} />
             <ContinueWatchingCard filmId={4} progress={0.12} at={610} />
           </div>

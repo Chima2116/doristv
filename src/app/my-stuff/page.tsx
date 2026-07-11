@@ -16,8 +16,8 @@ const SHORT_IDS: Record<number, boolean> = { 5: true, 7: true };
 const DOWNLOAD_IDS = [6, 4];
 
 const badgeChip = (color: string): CSSProperties => ({
-  position: "absolute", top: 10, left: 10, display: "inline-flex", alignItems: "center", gap: 5,
-  fontSize: 10.5, fontWeight: 700, color, background: "rgba(10,11,13,.72)", borderRadius: 999,
+  position: "absolute", top: 10, left: 10, zIndex: 2, display: "inline-flex", alignItems: "center", gap: 5,
+  fontSize: 10.5, fontWeight: 700, color, background: "rgba(10,11,13,.75)", borderRadius: 3,
   padding: "4px 9px", backdropFilter: "blur(6px)",
 });
 
@@ -49,7 +49,7 @@ function EmptyBlock({ title, body, cta, onCta }: { title: string; body: string; 
   );
 }
 
-const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill, 210px)", gap: "44px 28px" };
+const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fill, 240px)", gap: "20px 12px" };
 
 export default function MyStuffPage() {
   const { router } = useFilmActions();

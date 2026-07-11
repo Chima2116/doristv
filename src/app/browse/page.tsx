@@ -45,7 +45,7 @@ export default function BrowsePage() {
           <button onClick={clearFilters} style={{ minHeight: 42, padding: "0 20px", border: "none", borderRadius: 999, background: "var(--accent)", color: "var(--text-on-accent)", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>Clear search &amp; filters</button>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 210px)", gap: "44px 28px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 240px)", gap: "20px 12px" }}>
           {films.map((f) => <FilmCard key={f.id} film={f} showTierBadge />)}
         </div>
       )}

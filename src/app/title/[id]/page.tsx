@@ -152,7 +152,7 @@ export default function FilmDetailPage() {
 
           <section>
             <h2 style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>More like this</h2>
-            <div style={{ display: "flex", gap: 28, overflowX: "auto", paddingBottom: 8 }} className="doris-scroll">
+            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }} className="doris-scroll">
               {moreLike.map((f) => <FilmCard key={f.id} film={f} showTierBadge />)}
             </div>
           </section>

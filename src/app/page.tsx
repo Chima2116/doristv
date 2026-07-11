@@ -151,6 +151,11 @@ export default function HomePage() {
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#fff" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z" /></svg>{rating(hero)}</span>
               <span style={{ opacity: .4 }}>·</span><span>{hero.year}</span><span style={{ opacity: .4 }}>·</span><span>{hero.runtime}</span><span style={{ opacity: .4 }}>·</span><span>{hero.genre}</span><span style={{ opacity: .4 }}>·</span>
               <span style={{ border: "1px solid var(--border-strong)", borderRadius: 5, padding: "1px 7px", fontSize: 11 }}>PG-13</span>
+              <span style={{ opacity: .4 }}>·</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                <b style={{ color: "var(--text-primary)", fontWeight: 700 }}>{hero.comments}</b> discussing
+              </span>
             </div>
             <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.6, color: "var(--text-secondary)", maxWidth: 520 }}>{hero.synopsis}</p>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
@@ -158,19 +163,15 @@ export default function HomePage() {
               <button onClick={() => openDetail(hero.id)} style={{ minHeight: 54, padding: "0 28px", border: "1.5px solid rgba(255,255,255,.7)", borderRadius: 999, background: "rgba(255,255,255,.06)", color: "var(--text-primary)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Details</button>
               <HeroWatchLaterButton filmId={hero.id} />
             </div>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-secondary)", marginTop: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
-              <b style={{ color: "var(--text-primary)", fontWeight: 700 }}>{hero.comments} people</b> discussing
-            </span>
           </div>
 
-          <div style={{ display: "flex", gap: 8, marginTop: 32 }}>
+          <div style={{ position: "absolute", right: "clamp(20px, 3.5vw, 84px)", top: "50%", transform: "translateY(-50%)", display: "flex", flexDirection: "column", gap: 9, zIndex: 2 }}>
             {HERO_IDS.map((id, i) => (
               <button
                 key={id}
                 onClick={() => goToHero(i)}
                 aria-label={`Show ${film(id).title}`}
-                style={{ width: i === heroIndex ? 26 : 8, height: 8, borderRadius: 999, border: "none", cursor: "pointer", padding: 0, background: i === heroIndex ? "#fff" : "rgba(255,255,255,.35)", transition: "width 260ms var(--ease-standard), background 260ms var(--ease-standard)" }}
+                style={{ width: 8, height: i === heroIndex ? 26 : 8, borderRadius: 999, border: "none", cursor: "pointer", padding: 0, background: i === heroIndex ? "#fff" : "rgba(255,255,255,.35)", transition: "height 260ms var(--ease-standard), background 260ms var(--ease-standard)" }}
               />
             ))}
           </div>

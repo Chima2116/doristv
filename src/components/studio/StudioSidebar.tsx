@@ -6,8 +6,10 @@ import { Icon } from "./icons";
 export type Section = "dashboard" | "films" | "analytics" | "audience" | "revenue" | "comments" | "community" | "funding" | "payouts" | "settings";
 export type StudioKey = Section | "upload";
 
+// "upload" is deliberately not a sidebar tab — Upload film already has its own button in
+// every screen's header, and it's a one-off action/flow, not a section to browse back into.
 const NAV_DEF: [StudioKey, string, string][] = [
-  ["dashboard", "Dashboard", "dashboard"], ["films", "Films", "films"], ["upload", "Upload Film", "upload"],
+  ["dashboard", "Dashboard", "dashboard"], ["films", "Films", "films"],
   ["analytics", "Analytics", "analytics"], ["audience", "Audience", "audience"], ["revenue", "Revenue", "revenue"],
   ["comments", "Comments", "comments"], ["community", "Engagement", "community"], ["funding", "Funding & Collaborations", "funding"],
   ["payouts", "Payouts", "payouts"], ["settings", "Settings", "settings"],

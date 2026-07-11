@@ -25,6 +25,14 @@ interface FeedEntry {
 
 function PlayIcon() { return <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3" /></svg>; }
 function PauseIcon() { return <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>; }
+function VolumeIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" stroke="none" />
+      {muted ? <path d="M23 9l-6 6M17 9l6 6" /> : <path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" />}
+    </svg>
+  );
+}
 
 export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () => void }) {
   // No startAt means a fresh Play/Watch click (not a resume or jump-to-moment) — begin
@@ -71,6 +79,10 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoError, setVideoError] = useState(false);
+  // Starts muted so autoplay isn't blocked by the browser — real, working volume control
+  // (not just a mute toggle) lets viewers turn sound on themselves.
+  const [muted, setMuted] = useState(true);
+  const [volume, setVolume] = useState(1);
 
   useEffect(() => {
     tickTimer.current = setInterval(() => {
@@ -114,6 +126,13 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   }, [playing]);
 
   useEffect(() => { if (videoRef.current) videoRef.current.playbackRate = speed; }, [speed]);
+  useEffect(() => { if (videoRef.current) { videoRef.current.muted = muted; videoRef.current.volume = volume; } }, [muted, volume]);
+
+  const toggleMute = () => setMuted((m) => !m);
+  const onVolumeChange = (v: number) => {
+    setVolume(v);
+    setMuted(v === 0);
+  };
 
   // The fictional film runs far longer than the placeholder clip, so a seek maps onto the
   // clip via modulo — gives a "the picture jumped" feel on scrub instead of a static frame.
@@ -317,7 +336,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
         <video
           ref={videoRef}
           src="https://vjs.zencdn.net/v/oceans.mp4"
-          muted
+          muted={muted}
           loop
           playsInline
           preload="auto"
@@ -451,6 +470,15 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
             <button onClick={togglePlay} style={ctrlActive(false)} aria-label="Play/Pause">{playing ? <PauseIcon /> : <PlayIcon />}</button>
             <button onClick={back10} style={ctrlActive(false)} aria-label="Back 10 seconds"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 8 6 12l5 4" /><path d="M6 12h9a5 5 0 0 1 0 10h-2" /></svg></button>
             <button onClick={fwd10} style={ctrlActive(false)} aria-label="Forward 10 seconds"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m13 8 5 4-5 4" /><path d="M18 12H9a5 5 0 0 0 0 10h2" /></svg></button>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
+              <button onClick={toggleMute} style={ctrlActive(false)} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"}><VolumeIcon muted={muted} /></button>
+              <input
+                type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                aria-label="Volume"
+                style={{ width: 64, accentColor: "#fff", cursor: "pointer" }}
+              />
+            </span>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, color: "rgba(255,255,255,.75)", marginLeft: 8 }}>{fmt(position)} <span style={{ opacity: .45 }}>/ 1:38:00</span></span>
             <span style={{ marginLeft: 14, fontSize: 12, color: "rgba(255,255,255,.45)" }}>{scene.name}</span>
             <span style={{ flex: 1 }} />
@@ -562,7 +590,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
                       </div>
                       <div style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,.92)", marginTop: 4 }}>{c.text}</div>
                       <div style={{ display: "flex", gap: 14, marginTop: 7 }}>
-                        <button onClick={() => toggleLike(c.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 600, color: c.liked ? "#fff" : "rgba(255,255,255,.5)", padding: 0 }}><svg width="13" height="13" viewBox="0 0 24 24" fill={c.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>{c.likes}</button>
+                        <button onClick={() => toggleLike(c.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 600, color: c.liked ? "#fff" : "rgba(255,255,255,.5)", padding: 0 }}><svg width="13" height="13" viewBox="0 0 24 24" fill={c.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z" /></svg>{c.likes}</button>
                         <button onClick={() => openReply(c.id)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 600, color: isReplying ? "#fff" : "rgba(255,255,255,.5)", padding: 0 }}>Reply</button>
                       </div>
                       {c.replies.length > 0 && (

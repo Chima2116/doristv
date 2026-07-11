@@ -27,9 +27,11 @@ function PlayIcon() { return <svg width="19" height="19" viewBox="0 0 24 24" fil
 function PauseIcon() { return <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>; }
 
 export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () => void }) {
-  const [position, setPosition] = useState(startAt ?? 2530);
-  const [buffered, setBuffered] = useState(Math.max(3400, (startAt ?? 2530) + 900));
-  const [playing, setPlaying] = useState(false);
+  // No startAt means a fresh Play/Watch click (not a resume or jump-to-moment) — begin
+  // at the beginning and start playing immediately, matching a real "Play" button.
+  const [position, setPosition] = useState(startAt ?? 0);
+  const [buffered, setBuffered] = useState(Math.max(900, (startAt ?? 0) + 900));
+  const [playing, setPlaying] = useState(true);
   const [chrome, setChrome] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelView, setPanelView] = useState<PanelView>("feed");
@@ -129,6 +131,13 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   };
   const wake = () => { setChrome(true); scheduleHide(playing); };
   const togglePlay = () => { const next = !playing; setPlaying(next); setChrome(true); scheduleHide(next); };
+  // Playback now starts automatically on mount (playing defaults to true, nothing else is
+  // open yet), so the controls should fade the same way they would after a manual play —
+  // otherwise they'd just sit on screen until the first mouse move.
+  useEffect(() => {
+    const t = setTimeout(() => setChrome(false), 2800);
+    return () => clearTimeout(t);
+  }, []);
   const back10 = () => setPosition((p) => { const np = Math.max(0, p - 10); seekVideo(np); return np; });
   const fwd10 = () => setPosition((p) => { const np = Math.min(DURATION, p + 10); seekVideo(np); return np; });
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { naira } from "@/lib/format";
 import { chipStyle } from "@/lib/uiStyles";
+import { StudioSidebar } from "@/components/studio/StudioSidebar";
 
 type FileState = "none" | "uploading" | "done";
 type Tier = "free" | "rent" | "premium";
@@ -54,16 +55,24 @@ export default function UploadPage() {
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: 760, padding: "28px 32px 56px", display: "flex", flexDirection: "column", gap: 20, animation: "dorisRise 300ms var(--ease-standard)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <button onClick={() => router.push("/studio")} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--surface-1)", border: "1px solid var(--border-subtle)", borderRadius: 999, padding: "8px 15px", color: "var(--text-primary)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>← Studio</button>
-        <div style={{ flex: 1 }}>
-          <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 30, letterSpacing: "-0.02em" }}>Upload a film</h1>
-          <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>Every film is reviewed by a person — most decisions land within 48 hours.</p>
-        </div>
-      </div>
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--canvas)", fontFamily: "var(--font-ui)", color: "var(--text-primary)" }}>
+      <StudioSidebar activeKey="upload" onSelect={(key) => { if (key !== "upload") router.push("/studio"); }} />
 
-      {step < 4 && (
+      <main className="cs-scroll" style={{ flex: 1, minWidth: 0, height: "100vh", overflowY: "auto" }}>
+        <header style={{ position: "sticky", top: 0, zIndex: 20, display: "flex", alignItems: "center", gap: 20, padding: "18px 34px", background: "rgba(22,23,25,.82)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border-subtle)" }}>
+          <button onClick={() => router.push("/studio")} aria-label="Back to Studio" title="Back to Studio" style={{ width: 38, height: 38, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border-subtle)", borderRadius: "50%", background: "var(--surface-1)", color: "var(--text-primary)", cursor: "pointer" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)" }}>Creator Studio</div>
+            <h1 style={{ margin: "2px 0 0", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26, letterSpacing: "-0.02em" }}>Upload a film</h1>
+          </div>
+        </header>
+
+        <div style={{ maxWidth: 760, padding: "28px 34px 64px", display: "flex", flexDirection: "column", gap: 20, animation: "dorisRise 300ms var(--ease-standard)" }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>Every film is reviewed by a person — most decisions land within 48 hours.</p>
+
+          {step < 4 && (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {STEPS.map((st, i) => {
             const active = step === st.n, done = step > st.n;
@@ -201,6 +210,8 @@ export default function UploadPage() {
           <button onClick={() => router.push("/studio")} style={{ minHeight: 46, padding: "0 24px", border: "none", borderRadius: 999, background: "var(--accent)", color: "var(--text-on-accent)", fontWeight: 800, fontSize: 14, cursor: "pointer", marginTop: 4 }}>Back to Studio</button>
         </div>
       )}
+        </div>
+      </main>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { PaymentSheet } from "@/components/layout/PaymentSheet";
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const fullScreen = pathname.startsWith("/watch/") || pathname === "/studio";
+  const fullScreen = pathname.startsWith("/watch/") || pathname.startsWith("/studio");
 
   if (fullScreen) {
     return (

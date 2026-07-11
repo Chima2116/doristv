@@ -4,15 +4,12 @@ import { CSSProperties, useState } from "react";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useNow } from "@/hooks/useNow";
-import { film, rating, Film } from "@/lib/data";
-import { chipStyle, segStyle } from "@/lib/uiStyles";
+import { film, rating } from "@/lib/data";
+import { segStyle } from "@/lib/uiStyles";
 import { FilmCard, CARD_WIDTH } from "@/components/film/FilmCard";
 
 type Tab = "later" | "rentals" | "downloads";
-type Filter = "All" | "Movies" | "Short Films" | "Free" | "Premium";
 type Sort = "recent" | "title" | "rating";
-
-const SHORT_IDS: Record<number, boolean> = { 5: true, 7: true };
 
 const badgeChip = (color: string): CSSProperties => ({
   position: "absolute", top: 10, left: 10, zIndex: 2, display: "inline-flex", alignItems: "center", gap: 5,
@@ -46,14 +43,6 @@ function DownloadToggleBadge({ downloaded, onToggle }: { downloaded: boolean; on
   );
 }
 
-function matchFilter(f: Film, filter: Filter) {
-  if (filter === "All") return true;
-  if (filter === "Movies") return !SHORT_IDS[f.id];
-  if (filter === "Short Films") return !!SHORT_IDS[f.id];
-  if (filter === "Free") return f.tier === "free";
-  if (filter === "Premium") return f.tier !== "free";
-  return true;
-}
 function sortIds(ids: number[], sort: Sort) {
   const a = ids.slice();
   if (sort === "title") a.sort((x, y) => film(x).title.localeCompare(film(y).title));
@@ -81,14 +70,13 @@ export default function MyStuffPage() {
   const { watchLater, rented, downloaded, toggleDownload } = useApp();
   const now = useNow();
   const [tab, setTab] = useState<Tab>("later");
-  const [filter, setFilter] = useState<Filter>("All");
   const [sort, setSort] = useState<Sort>("recent");
   const [sortMenu, setSortMenu] = useState(false);
 
   const downloadedIds = Object.keys(downloaded).map(Number).filter((id) => downloaded[id]);
-  const laterIds = sortIds(watchLater.filter((id) => matchFilter(film(id), filter)), sort);
-  const rentalIds = sortIds(Object.keys(rented).map(Number).filter((id) => matchFilter(film(id), filter)), sort);
-  const downloadIds = sortIds(downloadedIds.filter((id) => matchFilter(film(id), filter)), sort);
+  const laterIds = sortIds(watchLater, sort);
+  const rentalIds = sortIds(Object.keys(rented).map(Number), sort);
+  const downloadIds = sortIds(downloadedIds, sort);
 
   const mySortLabels: Record<Sort, string> = { recent: "Recently added", title: "Alphabetical", rating: "Top rated" };
 
@@ -100,9 +88,9 @@ export default function MyStuffPage() {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: 4, background: "var(--surface-1)", border: "1px solid var(--border-subtle)", borderRadius: 999, padding: 4 }}>
-          <button onClick={() => { setTab("later"); setFilter("All"); }} style={segStyle(tab === "later")}>Watch Later · {watchLater.length}</button>
-          <button onClick={() => { setTab("rentals"); setFilter("All"); }} style={segStyle(tab === "rentals")}>Rentals · {Object.keys(rented).length}</button>
-          <button onClick={() => { setTab("downloads"); setFilter("All"); }} style={segStyle(tab === "downloads")}>Downloads · {downloadedIds.length}</button>
+          <button onClick={() => setTab("later")} style={segStyle(tab === "later")}>Watch Later · {watchLater.length}</button>
+          <button onClick={() => setTab("rentals")} style={segStyle(tab === "rentals")}>Rentals · {Object.keys(rented).length}</button>
+          <button onClick={() => setTab("downloads")} style={segStyle(tab === "downloads")}>Downloads · {downloadedIds.length}</button>
         </div>
         <span style={{ flex: 1 }} />
         <div style={{ position: "relative" }}>
@@ -118,14 +106,6 @@ export default function MyStuffPage() {
           )}
         </div>
       </div>
-
-      {tab !== "downloads" && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(["All", "Movies", "Short Films", "Free", "Premium"] as Filter[]).map((c) => (
-            <button key={c} onClick={() => setFilter(c)} style={chipStyle(filter === c)}>{c}</button>
-          ))}
-        </div>
-      )}
 
       {tab === "later" && (
         laterIds.length === 0 ? (

@@ -50,7 +50,7 @@ export function PaymentSheet() {
             </div>
             <div style={{ fontSize: 19, fontWeight: 800 }}>You&rsquo;re set</div>
             <p style={{ margin: 0, fontSize: 13.5, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 300 }}>Payment confirmed. Your 48-hour window for <b style={{ color: "var(--text-primary)" }}>{f.title}</b> has started. <b style={{ color: "var(--success)" }}>{share}</b> goes to {f.creator}.</p>
-            <button onClick={() => { closePay(); openPlayer(payFilmId, 372); }} style={{ minHeight: 48, padding: "0 26px", border: "none", borderRadius: 999, background: "var(--accent)", color: "var(--text-on-accent)", fontWeight: 800, fontSize: 14, cursor: "pointer", marginTop: 6 }}>▶ Start watching</button>
+            <button onClick={() => { closePay(); openPlayer(payFilmId); }} style={{ minHeight: 48, padding: "0 26px", border: "none", borderRadius: 999, background: "var(--accent)", color: "var(--text-on-accent)", fontWeight: 800, fontSize: 14, cursor: "pointer", marginTop: 6 }}>▶ Start watching</button>
             <button onClick={closePay} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Later — it&rsquo;ll be in Continue Watching</button>
           </div>
         )}

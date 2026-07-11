@@ -65,7 +65,7 @@ export default function FilmDetailPage() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
-              <button onClick={() => rentOrPlay(df.id, 372)} style={{ display: "inline-flex", alignItems: "center", gap: 9, minHeight: 52, padding: "0 30px", border: "none", borderRadius: 999, background: "#fff", color: "#1A1B1E", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
+              <button onClick={() => rentOrPlay(df.id)} style={{ display: "inline-flex", alignItems: "center", gap: 9, minHeight: 52, padding: "0 30px", border: "none", borderRadius: 999, background: "#fff", color: "#1A1B1E", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3" /></svg>{detailCtaLabel}
               </button>
               <button onClick={() => showToast("Trailer coming soon")} style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 52, padding: "0 22px", border: "1px solid rgba(255,255,255,.4)", borderRadius: 999, background: "rgba(255,255,255,.06)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer", backdropFilter: "blur(8px)" }}>

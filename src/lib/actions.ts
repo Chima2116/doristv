@@ -13,14 +13,16 @@ export function useFilmActions() {
   const openPlayer = (id: number, at?: number) => router.push(`/watch/${id}${at != null ? `?at=${Math.round(at)}` : ""}`);
   const openCreator = (name: string) => router.push(`/creator/${encodeURIComponent(name)}`);
 
-  /** Rent-gate: free/premium/already-rented plays immediately; rent-tier opens the payment sheet. */
+  /** Rent-gate: free/premium/already-rented plays immediately; rent-tier opens the payment sheet.
+   * `at` is only passed by callers resuming a specific moment (Continue Watching, a comment's
+   * jump-to-time) — a fresh Play/Watch click omits it, so the player starts from the beginning. */
   const rentOrPlay = (id: number, at?: number) => {
     const f = film(id);
     if (f.tier === "rent" && !rented[id]) {
       openPay(id);
       return;
     }
-    openPlayer(id, at ?? 372);
+    openPlayer(id, at);
   };
 
   return { router, openDetail, openPlayer, openCreator, rentOrPlay };

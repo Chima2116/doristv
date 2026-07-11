@@ -282,7 +282,7 @@ export function FilmCard({ film: f, width = CARD_WIDTH, topLeftBadge, topRightBa
       {topRightBadge}
     </>
   );
-  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} previewVideo={previewVideo} />;
+  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id)} previewVideo={previewVideo} />;
 }
 
 /** Continue Watching card — same footprint as every other card, still-frame artwork + resume progress. */
@@ -311,7 +311,7 @@ export function RankedFilmCard({ film: f, width = CARD_WIDTH }: { film: Film; wi
       <TitleOverlay title={f.title} sub={`${f.creator} · ${f.year}`} />
     </>
   );
-  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
+  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id)} />;
 }
 
 /** Landscape editorial spotlight card — Home's "Editor's picks" rail. The reference size every other card matches. */
@@ -326,5 +326,5 @@ export function EditorsPickCard({ film: f, note, width = CARD_WIDTH }: { film: F
       </span>
     </>
   );
-  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
+  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id)} />;
 }

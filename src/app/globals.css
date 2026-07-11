@@ -1,0 +1,140 @@
+/* DORIS TV — design tokens (dark, cinematic). Base gold-accent system with the
+   monochrome brand override (#1A1B1E canvas / #FFFFFF accent) applied on top,
+   matching the approved DORIS TV Prototype. */
+:root {
+  /* Canvas & surfaces */
+  --canvas: #1A1B1E;
+  --surface-1: #212327;
+  --surface-2: #2A2C31;
+  --surface-3: #34373D;
+  --surface-overlay: rgba(16, 17, 19, 0.72);
+  --surface-inverse: #F4F6F8;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: #FFFFFF;
+
+  /* Text */
+  --text-primary: #F4F6F8;
+  --text-secondary: #A9B4BE;
+  --text-tertiary: #6C7885;
+  --text-disabled: #47515B;
+  --text-on-accent: #1A1B1E;
+  --text-inverse: #0B0E11;
+
+  /* Accent — monochrome white (brand override) */
+  --accent: #FFFFFF;
+  --accent-hover: #F1F1F3;
+  --accent-pressed: #D2D3D6;
+  --accent-subtle: rgba(255, 255, 255, 0.10);
+  --accent-marker: rgba(255, 255, 255, 0.55);
+  --accent-marker-dense: rgba(255, 255, 255, 0.92);
+
+  /* Semantic */
+  --success: #46C489;
+  --success-subtle: rgba(70, 196, 137, 0.14);
+  --warning: #ED7738;
+  --warning-subtle: rgba(237, 119, 56, 0.14);
+  --error: #E5484D;
+  --error-subtle: rgba(229, 72, 77, 0.14);
+  --info: #5B9BD5;
+  --info-subtle: rgba(91, 155, 213, 0.14);
+
+  /* Tier badges */
+  --tier-free-bg: rgba(255, 255, 255, 0.10);
+  --tier-free-text: #F4F6F8;
+  --tier-rent-bg: #FFFFFF;
+  --tier-rent-text: #1A1B1E;
+  --tier-premium-bg: #FFFFFF;
+  --tier-premium-text: #1A1B1E;
+
+  /* Media protection */
+  --gradient-billboard: linear-gradient(to top, rgba(11,14,17,0.92) 0%, rgba(11,14,17,0.45) 45%, rgba(11,14,17,0) 75%);
+  --gradient-card: linear-gradient(to top, rgba(11,14,17,0.85) 0%, rgba(11,14,17,0) 55%);
+  --placeholder-media: #1A2028;
+
+  /* Typography — font families are supplied by next/font as CSS vars on <html> */
+  --tracking-caps: 0.08em;
+
+  /* Spacing (4/8 grid) */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --space-12: 48px; --space-16: 64px; --space-20: 80px; --space-24: 96px;
+  --touch-target: 44px;
+
+  /* Radius */
+  --radius-xs: 4px; --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+  --radius-xl: 20px; --radius-full: 999px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 8px 28px rgba(0, 0, 0, 0.55);
+  --shadow-4: 0 16px 48px rgba(0, 0, 0, 0.65);
+  --shadow-poster-hover: 0 12px 32px rgba(0, 0, 0, 0.6);
+
+  /* Motion */
+  --duration-fast: 150ms; --duration-base: 200ms; --duration-slow: 250ms; --duration-fade: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+html { height: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--canvas);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: var(--accent); text-decoration: none; }
+
+button, input, textarea { font-family: var(--font-ui); }
+
+@keyframes dorisRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes dorisFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dorisKen { 0% { transform: scale(1.06) translate(0,0); } 100% { transform: scale(1.16) translate(-1.5%,-1.5%); } }
+@keyframes dorisHeroIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes wlPop { 0% { transform: scale(1); } 45% { transform: scale(.7); } 100% { transform: scale(1); } }
+
+.doris-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+.doris-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 8px; }
+.doris-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Global interactive feedback */
+button {
+  transition: transform 150ms var(--ease-standard), background-color 150ms var(--ease-standard),
+    border-color 150ms var(--ease-standard), opacity 150ms var(--ease-standard), box-shadow 150ms var(--ease-standard);
+}
+button:active { transform: scale(.97); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:hover:not(:disabled), [role="button"]:hover { filter: brightness(1.12); }
+
+
+.mp-scroll::-webkit-scrollbar { width: 8px; }
+.mp-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; }
+.mp-scroll::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes mpRise { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes mpFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes mpMenu { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes mpMk { from { opacity: 0; transform: translate(-50%,-50%) scale(.3); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+@keyframes mpMkRot { from { opacity: 0; transform: translate(-50%,-50%) rotate(45deg) scale(.3); } to { opacity: 1; transform: translate(-50%,-50%) rotate(45deg) scale(1); } }
+
+.cs-scroll::-webkit-scrollbar { width: 9px; height: 9px; }
+.cs-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 8px; }
+.cs-scroll::-webkit-scrollbar-track { background: transparent; }
+@keyframes csRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

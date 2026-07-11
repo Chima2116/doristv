@@ -13,13 +13,38 @@ type Filter = "All" | "Movies" | "Short Films" | "Free" | "Premium";
 type Sort = "recent" | "title" | "rating";
 
 const SHORT_IDS: Record<number, boolean> = { 5: true, 7: true };
-const DOWNLOAD_IDS = [6, 4];
 
 const badgeChip = (color: string): CSSProperties => ({
   position: "absolute", top: 10, left: 10, zIndex: 2, display: "inline-flex", alignItems: "center", gap: 5,
   fontSize: 10.5, fontWeight: 700, color, background: "rgba(10,11,13,.75)", borderRadius: 3,
   padding: "4px 9px", backdropFilter: "blur(6px)",
 });
+
+const cornerBtn: CSSProperties = {
+  position: "absolute", top: 8, right: 8, zIndex: 3, width: 30, height: 30, display: "inline-flex",
+  alignItems: "center", justifyContent: "center", borderRadius: "50%", border: "1px solid rgba(255,255,255,.28)",
+  background: "rgba(10,11,13,.72)", color: "#fff", cursor: "pointer", backdropFilter: "blur(6px)",
+};
+
+function DownloadIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>;
+}
+function TrashIcon() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>;
+}
+
+function DownloadToggleBadge({ downloaded, onToggle }: { downloaded: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      aria-label={downloaded ? "Remove download" : "Download for offline"}
+      title={downloaded ? "Remove download" : "Download for offline"}
+      style={{ ...cornerBtn, background: downloaded ? "#fff" : cornerBtn.background, color: downloaded ? "#0B0B0C" : "#fff" }}
+    >
+      {downloaded ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg> : <DownloadIcon />}
+    </button>
+  );
+}
 
 function matchFilter(f: Film, filter: Filter) {
   if (filter === "All") return true;
@@ -53,16 +78,17 @@ const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: `repeat
 
 export default function MyStuffPage() {
   const { router } = useFilmActions();
-  const { watchLater, rented } = useApp();
+  const { watchLater, rented, downloaded, toggleDownload } = useApp();
   const now = useNow();
   const [tab, setTab] = useState<Tab>("later");
   const [filter, setFilter] = useState<Filter>("All");
   const [sort, setSort] = useState<Sort>("recent");
   const [sortMenu, setSortMenu] = useState(false);
 
+  const downloadedIds = Object.keys(downloaded).map(Number).filter((id) => downloaded[id]);
   const laterIds = sortIds(watchLater.filter((id) => matchFilter(film(id), filter)), sort);
   const rentalIds = sortIds(Object.keys(rented).map(Number).filter((id) => matchFilter(film(id), filter)), sort);
-  const downloadIds = sortIds(DOWNLOAD_IDS.filter((id) => matchFilter(film(id), filter)), sort);
+  const downloadIds = sortIds(downloadedIds.filter((id) => matchFilter(film(id), filter)), sort);
 
   const mySortLabels: Record<Sort, string> = { recent: "Recently added", title: "Alphabetical", rating: "Top rated" };
 
@@ -76,7 +102,7 @@ export default function MyStuffPage() {
         <div style={{ display: "flex", gap: 4, background: "var(--surface-1)", border: "1px solid var(--border-subtle)", borderRadius: 999, padding: 4 }}>
           <button onClick={() => { setTab("later"); setFilter("All"); }} style={segStyle(tab === "later")}>Watch Later · {watchLater.length}</button>
           <button onClick={() => { setTab("rentals"); setFilter("All"); }} style={segStyle(tab === "rentals")}>Rentals · {Object.keys(rented).length}</button>
-          <button onClick={() => { setTab("downloads"); setFilter("All"); }} style={segStyle(tab === "downloads")}>Downloads · {DOWNLOAD_IDS.length}</button>
+          <button onClick={() => { setTab("downloads"); setFilter("All"); }} style={segStyle(tab === "downloads")}>Downloads · {downloadedIds.length}</button>
         </div>
         <span style={{ flex: 1 }} />
         <div style={{ position: "relative" }}>
@@ -93,18 +119,22 @@ export default function MyStuffPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {(["All", "Movies", "Short Films", "Free", "Premium"] as Filter[]).map((c) => (
-          <button key={c} onClick={() => setFilter(c)} style={chipStyle(filter === c)}>{c}</button>
-        ))}
-      </div>
+      {tab !== "downloads" && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(["All", "Movies", "Short Films", "Free", "Premium"] as Filter[]).map((c) => (
+            <button key={c} onClick={() => setFilter(c)} style={chipStyle(filter === c)}>{c}</button>
+          ))}
+        </div>
+      )}
 
       {tab === "later" && (
         laterIds.length === 0 ? (
           <EmptyBlock title="Your collection starts here" body="Save films to watch later — tap “+ Watch Later” on any film and build your personal library." cta="Browse films" onCta={() => router.push("/browse")} />
         ) : (
           <div style={gridStyle}>
-            {laterIds.map((id) => <FilmCard key={id} film={film(id)} showTierBadge />)}
+            {laterIds.map((id) => (
+              <FilmCard key={id} film={film(id)} showTierBadge topRightBadge={<DownloadToggleBadge downloaded={!!downloaded[id]} onToggle={() => toggleDownload(id)} />} />
+            ))}
           </div>
         )
       )}
@@ -123,7 +153,7 @@ export default function MyStuffPage() {
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{left} left
                 </span>
               );
-              return <FilmCard key={id} film={film(id)} topLeftBadge={badge} />;
+              return <FilmCard key={id} film={film(id)} topLeftBadge={badge} topRightBadge={<DownloadToggleBadge downloaded={!!downloaded[id]} onToggle={() => toggleDownload(id)} />} />;
             })}
           </div>
         )
@@ -131,25 +161,23 @@ export default function MyStuffPage() {
 
       {tab === "downloads" && (
         downloadIds.length === 0 ? (
-          <EmptyBlock title="Download for the road" body="Save films to your device and watch offline — perfect for patchy networks. Look for the download icon on any film you've rented or that's free." cta="Find films to download" onCta={() => router.push("/browse")} />
+          <EmptyBlock title="Download for the road" body="Save films to your device and watch offline — perfect for patchy networks. Look for the download icon on any film in Watch Later or Rentals." cta="Find films to download" onCta={() => router.push("/browse")} />
         ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", background: "var(--surface-1)", border: "1px solid var(--border-subtle)", borderRadius: 14 }}>
-              <span style={{ width: 36, height: 36, flex: "none", borderRadius: 10, background: "var(--surface-2)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)" }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg></span>
-              <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13.5, fontWeight: 700 }}>Offline library</div><div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 1 }}>{DOWNLOAD_IDS.length} films · 2.1 GB used · 12.4 GB free</div></div>
-              <div style={{ width: 140, height: 6, borderRadius: 999, background: "var(--surface-3)", overflow: "hidden" }}><div style={{ height: "100%", width: "22%", background: "var(--accent)" }} /></div>
-            </div>
-            <div style={{ ...gridStyle, marginTop: 28 }}>
-              {downloadIds.map((id) => {
-                const badge = (
-                  <span style={badgeChip("var(--success)")}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Downloaded
-                  </span>
-                );
-                return <FilmCard key={id} film={film(id)} topLeftBadge={badge} />;
-              })}
-            </div>
-          </>
+          <div style={gridStyle}>
+            {downloadIds.map((id) => {
+              const badge = (
+                <span style={badgeChip("var(--success)")}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>Downloaded
+                </span>
+              );
+              const deleteBtn = (
+                <button onClick={(e) => { e.stopPropagation(); toggleDownload(id); }} aria-label="Delete download" title="Delete download" style={cornerBtn}>
+                  <TrashIcon />
+                </button>
+              );
+              return <FilmCard key={id} film={film(id)} topLeftBadge={badge} topRightBadge={deleteBtn} previewVideo={false} />;
+            })}
+          </div>
         )
       )}
     </div>

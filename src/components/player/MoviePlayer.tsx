@@ -66,6 +66,9 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   const replyRef = useRef<HTMLTextAreaElement | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [videoError, setVideoError] = useState(false);
 
   useEffect(() => {
     tickTimer.current = setInterval(() => {
@@ -79,6 +82,45 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
     return () => { if (tickTimer.current) clearInterval(tickTimer.current); if (hideTimer.current) clearTimeout(hideTimer.current); };
   }, [playing]);
 
+  // Real playback, not a slow zoom on a still frame. Chrome's own intersection tracker for
+  // muted, audioless video needs a paint cycle to confirm it's on-screen before it'll keep
+  // playing — call play() too early and it silently re-pauses with "video-only background
+  // media was paused to save power," and won't retry on its own, so: listen for any pause
+  // while we're still meant to be playing and retry briefly.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (!playing) { v.pause(); return; }
+    let cancelled = false;
+    let retriesLeft = 4;
+    const tryPlay = () => {
+      if (cancelled) return;
+      v.play().catch((err: DOMException) => {
+        if (cancelled || retriesLeft <= 0 || err.name !== "AbortError") return;
+        retriesLeft -= 1;
+        setTimeout(tryPlay, 150);
+      });
+    };
+    const onUnexpectedPause = () => {
+      if (cancelled || retriesLeft <= 0) return;
+      retriesLeft -= 1;
+      setTimeout(tryPlay, 150);
+    };
+    v.addEventListener("pause", onUnexpectedPause);
+    tryPlay();
+    return () => { cancelled = true; v.removeEventListener("pause", onUnexpectedPause); };
+  }, [playing]);
+
+  useEffect(() => { if (videoRef.current) videoRef.current.playbackRate = speed; }, [speed]);
+
+  // The fictional film runs far longer than the placeholder clip, so a seek maps onto the
+  // clip via modulo — gives a "the picture jumped" feel on scrub instead of a static frame.
+  const seekVideo = (newPos: number) => {
+    const v = videoRef.current;
+    if (!v || !videoDuration) return;
+    v.currentTime = newPos % videoDuration;
+  };
+
   const scheduleHide = (willPlay: boolean) => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     if (willPlay && !panelOpen && hoverId == null && !dragging && !menu && !sceneMode) {
@@ -87,8 +129,8 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   };
   const wake = () => { setChrome(true); scheduleHide(playing); };
   const togglePlay = () => { const next = !playing; setPlaying(next); setChrome(true); scheduleHide(next); };
-  const back10 = () => setPosition((p) => Math.max(0, p - 10));
-  const fwd10 = () => setPosition((p) => Math.min(DURATION, p + 10));
+  const back10 = () => setPosition((p) => { const np = Math.max(0, p - 10); seekVideo(np); return np; });
+  const fwd10 = () => setPosition((p) => { const np = Math.min(DURATION, p + 10); seekVideo(np); return np; });
 
   const autosize = (el: HTMLTextAreaElement | null, max: number) => { if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, max) + "px"; };
 
@@ -109,7 +151,8 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
       setAttach({ start, end }); setPosition(start); setPanelOpen(true); setPanelView("feed");
       setTimeout(() => composerRef.current?.focus(), 30);
     } else {
-      setDragging(false); setDragMoved(false); setPosition(Math.round(dragCur * DURATION));
+      const np = Math.round(dragCur * DURATION);
+      setDragging(false); setDragMoved(false); setPosition(np); seekVideo(np);
     }
   };
   const onBarLeave = () => { if (dragging) { setDragging(false); setDragMoved(false); } };
@@ -121,7 +164,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
 
   const openMoment = (id: number) => {
     const m = moment(id); if (!m) return;
-    setActiveId(id); setPanelOpen(true); setPanelView("moment"); setPosition(m.at); setPlaying(false); setChrome(true); setHoverId(null); setDraft(""); setMenu(null); setSceneMode(false);
+    setActiveId(id); setPanelOpen(true); setPanelView("moment"); setPosition(m.at); seekVideo(m.at); setPlaying(false); setChrome(true); setHoverId(null); setDraft(""); setMenu(null); setSceneMode(false);
   };
   const toggleComments = () => { setPanelOpen((v) => !v); setPanelView("feed"); setMenu(null); setChrome(true); };
   const backToFeed = () => { setPanelView("feed"); setDraft(""); };
@@ -259,7 +302,21 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
 
   return (
     <div onMouseMove={wake} style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#000", fontFamily: "var(--font-ui)", color: "#fff" }}>
-      <div style={{ position: "absolute", inset: 0, background: `url("/films/film-weight-of-water.png") ${scene.pos} / cover no-repeat`, transform: playing ? "scale(1.06)" : "scale(1.0)", transition: "transform 24s linear" }} />
+      {videoError ? (
+        <div style={{ position: "absolute", inset: 0, background: `url("/films/film-weight-of-water.png") ${scene.pos} / cover no-repeat`, transform: playing ? "scale(1.06)" : "scale(1.0)", transition: "transform 24s linear" }} />
+      ) : (
+        <video
+          ref={videoRef}
+          src="https://vjs.zencdn.net/v/oceans.mp4"
+          muted
+          loop
+          playsInline
+          preload="auto"
+          onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration || 0)}
+          onError={() => setVideoError(true)}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: playing ? "scale(1.06)" : "scale(1.0)", transition: "transform 24s linear" }}
+        />
+      )}
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(130% 100% at 50% 35%, transparent 45%, rgba(0,0,0,.5) 100%)", pointerEvents: "none" }} />
 
       {/* Top chrome */}

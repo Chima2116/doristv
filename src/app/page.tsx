@@ -1,6 +1,6 @@
 "use client";
 
-import { CSSProperties } from "react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useHover } from "@/hooks/useHover";
@@ -8,11 +8,20 @@ import { FilmCard, ContinueWatchingCard, RankedFilmCard, EditorsPickCard } from 
 import { ShelfRow } from "@/components/film/ShelfRow";
 import { bg, film, rating, initials, FILMS } from "@/lib/data";
 
-function HeroWatchLaterButton() {
+// Photographic films only — the hero is the biggest visual on the page, and the
+// gradient-only films (no real still) would look noticeably weaker in rotation here.
+const HERO_IDS = [1, 3, 2, 4];
+const HERO_INTERVAL = 7000;
+// The two night-scene stills (2, 4) run noticeably darker than the two day-lit ones
+// (1, 3) — a flat brightness filter per slide keeps the carousel legible either way
+// instead of the text going nearly invisible whenever a dark still rotates in.
+const HERO_BRIGHTEN: Record<number, number> = { 1: 1, 2: 1.8, 3: 0.95, 4: 2 };
+
+function HeroWatchLaterButton({ filmId }: { filmId: number }) {
   const { isInWatchLater, toggleWatchLater } = useApp();
-  const inLater = isInWatchLater(1);
+  const inLater = isInWatchLater(filmId);
   return (
-    <button onClick={() => toggleWatchLater(1)} aria-label="Watch Later" title="Watch Later" style={{ width: 52, height: 52, flex: "none", border: "1.5px solid rgba(255,255,255,.4)", borderRadius: "50%", background: "none", color: "var(--text-primary)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+    <button onClick={() => toggleWatchLater(filmId)} aria-label="Watch Later" title="Watch Later" style={{ width: 52, height: 52, flex: "none", border: "1.5px solid rgba(255,255,255,.4)", borderRadius: "50%", background: "none", color: "var(--text-primary)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
       {inLater ? (
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "wlPop 280ms var(--ease-standard)" }}><path d="M20 6 9 17l-5-5" /></svg>
       ) : (
@@ -97,7 +106,19 @@ function CreatorSpotlightCard({ name, meta }: { name: string; meta: string }) {
 
 export default function HomePage() {
   const { openPlayer, openDetail } = useFilmActions();
-  const editorial = film(1);
+
+  const [heroIndex, setHeroIndex] = useState(0);
+  const heroTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const restartHeroTimer = () => {
+    if (heroTimer.current) clearInterval(heroTimer.current);
+    heroTimer.current = setInterval(() => setHeroIndex((i) => (i + 1) % HERO_IDS.length), HERO_INTERVAL);
+  };
+  useEffect(() => {
+    restartHeroTimer();
+    return () => { if (heroTimer.current) clearInterval(heroTimer.current); };
+  }, []);
+  const goToHero = (i: number) => { setHeroIndex(i); restartHeroTimer(); };
+  const hero = film(HERO_IDS[heroIndex]);
 
   const discussed = FILMS.slice().sort((a, b) => b.comments - a.comments).slice(0, 6);
   const award = [3, 1, 7, 5].map(film);
@@ -112,34 +133,46 @@ export default function HomePage() {
 
   return (
     <div style={{ width: "100%", animation: "dorisRise 300ms var(--ease-standard)" }}>
-      {/* Full-bleed hero */}
+      {/* Full-bleed hero carousel — rotates through a few films by itself, dots let you jump */}
       <section style={{ position: "relative", width: "100%", minHeight: "max(640px,90vh)", marginTop: -64, overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, background: `${bg(1, "20%")}`, animation: "dorisKen 26s ease-out infinite alternate", willChange: "transform" }} />
+        <div key={hero.id} style={{ position: "absolute", inset: 0, background: bg(hero.id, "20%"), filter: `brightness(${HERO_BRIGHTEN[hero.id] ?? 1}) contrast(0.96)`, animation: "dorisKen 26s ease-out infinite alternate, dorisFadeIn 700ms var(--ease-standard) both", willChange: "transform" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(26,27,30,.96) 0%, rgba(26,27,30,.78) 30%, rgba(26,27,30,.25) 62%, rgba(26,27,30,0) 100%)" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, #1A1B1E 2%, rgba(26,27,30,.35) 26%, rgba(26,27,30,0) 55%)" }} />
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 140, background: "linear-gradient(to bottom, rgba(26,27,30,.85) 0%, rgba(26,27,30,0) 100%)" }} />
 
-        <div style={{ position: "relative", padding: "96px clamp(20px, 3.5vw, 84px) 128px", minHeight: "max(640px,90vh)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-          <div style={{ maxWidth: 580, display: "flex", flexDirection: "column", gap: 18, animation: "dorisHeroIn 900ms var(--ease-standard) both" }}>
+        <div style={{ position: "relative", padding: "96px clamp(20px, 3.5vw, 84px) 100px", minHeight: "max(640px,90vh)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div key={hero.id} style={{ maxWidth: 580, display: "flex", flexDirection: "column", gap: 18, animation: "dorisHeroIn 700ms var(--ease-standard) both" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-secondary)" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#1A1B1E", background: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 10, whiteSpace: "nowrap" }}>🏆 AMAA Winner</span>Finale now streaming
+              {hero.trending && <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#1A1B1E", background: "#fff", borderRadius: 999, padding: "3px 10px", fontSize: 10, whiteSpace: "nowrap" }}>🔥 Trending</span>}
+              Now streaming
             </span>
-            <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(48px,5.6vw,82px)", lineHeight: 0.96, letterSpacing: "-0.03em", textShadow: "0 2px 30px rgba(0,0,0,.45)" }}>{editorial.title}</h1>
+            <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(48px,5.6vw,82px)", lineHeight: 0.96, letterSpacing: "-0.03em", textShadow: "0 2px 30px rgba(0,0,0,.45)" }}>{hero.title}</h1>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontSize: 13.5, fontWeight: 600, color: "var(--text-secondary)" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#fff" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z" /></svg>{rating(editorial)}</span>
-              <span style={{ opacity: .4 }}>·</span><span>{editorial.year}</span><span style={{ opacity: .4 }}>·</span><span>{editorial.runtime}</span><span style={{ opacity: .4 }}>·</span><span>{editorial.genre}</span><span style={{ opacity: .4 }}>·</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#fff" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z" /></svg>{rating(hero)}</span>
+              <span style={{ opacity: .4 }}>·</span><span>{hero.year}</span><span style={{ opacity: .4 }}>·</span><span>{hero.runtime}</span><span style={{ opacity: .4 }}>·</span><span>{hero.genre}</span><span style={{ opacity: .4 }}>·</span>
               <span style={{ border: "1px solid var(--border-strong)", borderRadius: 5, padding: "1px 7px", fontSize: 11 }}>PG-13</span>
             </div>
-            <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.6, color: "var(--text-secondary)", maxWidth: 520 }}>A fisherman&rsquo;s daughter returns to Makoko with a secret the lagoon won&rsquo;t keep — a haunting debut shot over two rainy seasons on the Lagos waterfront.</p>
+            <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.6, color: "var(--text-secondary)", maxWidth: 520 }}>{hero.synopsis}</p>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
-              <PlayPill onClick={() => openPlayer(1)} hoverScale />
-              <button onClick={() => openDetail(1)} style={{ minHeight: 54, padding: "0 28px", border: "1.5px solid rgba(255,255,255,.7)", borderRadius: 999, background: "rgba(255,255,255,.06)", color: "var(--text-primary)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Details</button>
-              <HeroWatchLaterButton />
+              <PlayPill onClick={() => openPlayer(hero.id)} hoverScale />
+              <button onClick={() => openDetail(hero.id)} style={{ minHeight: 54, padding: "0 28px", border: "1.5px solid rgba(255,255,255,.7)", borderRadius: 999, background: "rgba(255,255,255,.06)", color: "var(--text-primary)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Details</button>
+              <HeroWatchLaterButton filmId={hero.id} />
             </div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-secondary)", marginTop: 6 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
-              <b style={{ color: "var(--text-primary)", fontWeight: 700 }}>214 people</b> discussing · 6 memorable moments
+              <b style={{ color: "var(--text-primary)", fontWeight: 700 }}>{hero.comments} people</b> discussing
             </span>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 32 }}>
+            {HERO_IDS.map((id, i) => (
+              <button
+                key={id}
+                onClick={() => goToHero(i)}
+                aria-label={`Show ${film(id).title}`}
+                style={{ width: i === heroIndex ? 26 : 8, height: 8, borderRadius: 999, border: "none", cursor: "pointer", padding: 0, background: i === heroIndex ? "#fff" : "rgba(255,255,255,.35)", transition: "width 260ms var(--ease-standard), background 260ms var(--ease-standard)" }}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -158,23 +191,6 @@ export default function HomePage() {
         <Rail title="Trending this week" sub="what Nigeria is watching now">
           {[1, 4, 2, 7, 5].map((id, i) => <RankCard key={id} filmId={id} rank={i + 1} />)}
         </Rail>
-
-        {/* Full-bleed spotlight banner — image is the whole backdrop, text sits on a
-            gradient scrim over it, so there's no leftover dead space beside a boxed still. */}
-        <section style={{ position: "relative", width: "100%", minHeight: 420, overflow: "hidden", display: "flex", alignItems: "center", borderRadius: 4 }}>
-          <span style={{ position: "absolute", inset: 0, background: bg(1, "35%") }} />
-          <span style={{ position: "absolute", inset: 0, background: "linear-gradient(100deg, rgba(26,27,30,.97) 0%, rgba(26,27,30,.86) 30%, rgba(26,27,30,.4) 60%, rgba(26,27,30,.08) 100%)" }} />
-          <span style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(26,27,30,.55) 0%, rgba(26,27,30,0) 35%)" }} />
-          <div style={{ position: "relative", padding: "56px 0", maxWidth: 560, display: "flex", flexDirection: "column", gap: 14 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-secondary)" }}>Editor&rsquo;s Feature</span>
-            <h3 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 34, lineHeight: 1.05, letterSpacing: "-0.02em" }}>{editorial.title}</h3>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "var(--text-secondary)", maxWidth: 480 }}>{editorial.synopsis}</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
-              <button onClick={() => openPlayer(1, 372)} style={{ display: "inline-flex", alignItems: "center", gap: 8, minHeight: 46, padding: "0 24px", border: "none", borderRadius: 999, background: "#fff", color: "#1A1B1E", fontWeight: 800, fontSize: 14, cursor: "pointer" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3" /></svg>Play</button>
-              <button onClick={() => openDetail(1)} style={{ minHeight: 46, padding: "0 22px", border: "1px solid var(--border-strong)", borderRadius: 999, background: "none", color: "var(--text-primary)", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>Full details</button>
-            </div>
-          </div>
-        </section>
 
         <Rail title="Editor's picks" sub="hand-selected by the DORIS team">
           <EditorsPickCard film={film(3)} note={film(3).synopsis.slice(0, 88) + "…"} />

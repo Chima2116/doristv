@@ -81,6 +81,7 @@ interface MediaCardProps {
   heightRatio: number;
   poster: ReactNode;
   onPlay: () => void;
+  previewVideo?: boolean;
 }
 
 /**
@@ -92,7 +93,7 @@ interface MediaCardProps {
  * Portal-rendered (not positioned inline) so it escapes horizontally-scrolling
  * shelf rows instead of being clipped by them.
  */
-function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay }: MediaCardProps) {
+function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVideo = true }: MediaCardProps) {
   const { isInWatchLater, toggleWatchLater, likedFilms, toggleLikeFilm } = useApp();
   const { openDetail } = useFilmActions();
   const { triggerRef, active, settled, rect, open, scheduleClose } = useCardExpand<HTMLDivElement>();
@@ -139,6 +140,7 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay }: MediaCa
           liked={liked}
           onToggleLater={() => toggleWatchLater(f.id)}
           onToggleLike={() => toggleLikeFilm(f.id)}
+          previewVideo={previewVideo}
         />,
         document.body
       )}
@@ -146,10 +148,10 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay }: MediaCa
   );
 }
 
-function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMouseEnter, onMouseLeave, onOpenDetail, onPlay, inLater, liked, onToggleLater, onToggleLike }: {
+function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMouseEnter, onMouseLeave, onOpenDetail, onPlay, inLater, liked, onToggleLater, onToggleLike, previewVideo }: {
   f: Film; rect: DOMRect; placement: Placement; heightRatio: number; settled: boolean; poster: ReactNode;
   onMouseEnter: () => void; onMouseLeave: () => void; onOpenDetail: () => void; onPlay: () => void;
-  inLater: boolean; liked: boolean; onToggleLater: () => void; onToggleLike: () => void;
+  inLater: boolean; liked: boolean; onToggleLater: () => void; onToggleLike: () => void; previewVideo: boolean;
 }) {
   const restW = rect.width, restH = rect.height;
   const w = settled ? placement.width : restW;
@@ -161,7 +163,7 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
   const [videoError, setVideoError] = useState(false);
   useEffect(() => {
     const v = videoRef.current;
-    if (!v) return;
+    if (!v || !previewVideo) return;
     if (!settled) { v.pause(); v.currentTime = 0; return; }
 
     let cancelled = false;
@@ -187,7 +189,7 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
     v.addEventListener("pause", onUnexpectedPause);
     tryPlay();
     return () => { cancelled = true; v.removeEventListener("pause", onUnexpectedPause); };
-  }, [settled]);
+  }, [settled, previewVideo]);
 
   return (
     <div
@@ -203,13 +205,19 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
         fontFamily: "var(--font-ui)", color: "var(--text-primary)", cursor: "default",
       }}
     >
-      <button
+      {/* A real <button> here would make any interactive badge in `poster` (e.g. a
+          per-card download toggle) an invalid nested button, breaking hit-testing —
+          role="button" on a div gets the same semantics/keyboard support without that. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={(e) => { e.stopPropagation(); onOpenDetail(); }}
-        style={{ position: "relative", display: "block", width: "100%", height: posterH, border: "none", padding: 0, background: bg(f.id, "40%"), cursor: "pointer", overflow: "hidden", transition: "height 200ms var(--ease-standard)" }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetail(); } }}
+        style={{ position: "relative", display: "block", width: "100%", height: posterH, background: bg(f.id, "40%"), cursor: "pointer", overflow: "hidden", transition: "height 200ms var(--ease-standard)" }}
         aria-label={`${f.title} — view details`}
       >
         <span style={{ position: "absolute", inset: -4, transform: settled ? "scale(1.045)" : "scale(1)", transition: "transform 220ms var(--ease-standard)", background: bg(f.id, "40%") }} />
-        {f.trailerUrl && !videoError && (
+        {previewVideo && f.trailerUrl && !videoError && (
           <video
             ref={videoRef}
             src={f.trailerUrl}
@@ -222,7 +230,7 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
           />
         )}
         {poster}
-      </button>
+      </div>
 
       <div
         style={{
@@ -258,10 +266,11 @@ interface FilmCardProps {
   topLeftBadge?: ReactNode;
   topRightBadge?: ReactNode;
   showTierBadge?: boolean;
+  previewVideo?: boolean;
 }
 
 /** The signature poster card — Home shelves, Browse, My Stuff lists, creator profiles. */
-export function FilmCard({ film: f, width = CARD_WIDTH, topLeftBadge, topRightBadge, showTierBadge }: FilmCardProps) {
+export function FilmCard({ film: f, width = CARD_WIDTH, topLeftBadge, topRightBadge, showTierBadge, previewVideo = true }: FilmCardProps) {
   const { rentOrPlay } = useFilmActions();
   const tb = tierBadge(f, true);
   const poster = (
@@ -273,7 +282,7 @@ export function FilmCard({ film: f, width = CARD_WIDTH, topLeftBadge, topRightBa
       {topRightBadge}
     </>
   );
-  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} />;
+  return <MediaCard f={f} width={width} cssAspect={CARD_ASPECT} heightRatio={CARD_HEIGHT_RATIO} poster={poster} onPlay={() => rentOrPlay(f.id, 372)} previewVideo={previewVideo} />;
 }
 
 /** Continue Watching card — same footprint as every other card, still-frame artwork + resume progress. */

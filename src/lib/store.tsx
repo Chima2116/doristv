@@ -9,6 +9,7 @@ interface AppState {
   rented: Record<number, number>;
   likedFilms: Record<number, boolean>;
   followedSet: Record<string, boolean>;
+  downloaded: Record<number, boolean>;
   searchQ: string;
   toast: string | null;
   pay: "form" | "success" | null;
@@ -22,6 +23,7 @@ interface AppContextValue extends AppState {
   isInWatchLater: (id: number) => boolean;
   toggleLikeFilm: (id: number) => void;
   toggleFollow: (name: string) => void;
+  toggleDownload: (id: number) => void;
   setSearchQ: (v: string) => void;
   showToast: (msg: string) => void;
   openPay: (filmId: number) => void;
@@ -38,6 +40,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [rented, setRented] = useState<Record<number, number>>({});
   const [likedFilms, setLikedFilms] = useState<Record<number, boolean>>({});
   const [followedSet, setFollowedSet] = useState<Record<string, boolean>>({});
+  const [downloaded, setDownloaded] = useState<Record<number, boolean>>({ 6: true, 4: true });
   const [searchQ, setSearchQ] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [pay, setPay] = useState<"form" | "success" | null>(null);
@@ -74,6 +77,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [showToast]);
 
+  const toggleDownload = useCallback((id: number) => {
+    setDownloaded((prev) => {
+      const next = !prev[id];
+      showToast(next ? "Downloading for offline" : "Download removed");
+      return { ...prev, [id]: next };
+    });
+  }, [showToast]);
+
   const openPay = useCallback((filmId: number) => {
     setPayFilmId(filmId);
     setPay("form");
@@ -91,11 +102,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AppContextValue>(() => ({
-    watchLater, rented, likedFilms, followedSet, searchQ, toast, pay, payFilmId, payMethod, uploads,
-    toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, setSearchQ, showToast,
+    watchLater, rented, likedFilms, followedSet, downloaded, searchQ, toast, pay, payFilmId, payMethod, uploads,
+    toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, toggleDownload, setSearchQ, showToast,
     openPay, closePay, setPayMethod, confirmPay, addUpload,
-  }), [watchLater, rented, likedFilms, followedSet, searchQ, toast, pay, payFilmId, payMethod, uploads,
-    toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, showToast, openPay, closePay, confirmPay, addUpload]);
+  }), [watchLater, rented, likedFilms, followedSet, downloaded, searchQ, toast, pay, payFilmId, payMethod, uploads,
+    toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, toggleDownload, showToast, openPay, closePay, confirmPay, addUpload]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

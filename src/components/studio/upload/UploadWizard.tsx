@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { useNow } from "@/hooks/useNow";
 import {
-  AssetKey, CrewMember, UploadDraft, defaultDraft, draftToPublished, emptyAsset,
+  AssetKey, CrewMember, UploadDraft, defaultDraft, draftToPublished, emptyAsset, newFilmId,
 } from "@/lib/uploadTypes";
 import { WelcomeStep } from "./steps/WelcomeStep";
 import { AssetsStep } from "./steps/AssetsStep";
@@ -108,7 +108,7 @@ export function UploadWizard() {
   const removeCrew = useCallback((id: string) => setDraft((d) => ({ ...d, crew: d.crew.filter((c) => c.id !== id) })), []);
 
   const finish = useCallback((status: "published" | "scheduled" | "draft", scheduledAt: number | null) => {
-    const film = draftToPublished({ ...draft, scheduledAt }, status);
+    const film = draftToPublished({ ...draft, scheduledAt }, newFilmId(), status);
     publishFilm(film);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
     showToast(status === "published" ? "Your film is live on DORIS TV" : status === "scheduled" ? "Release scheduled" : "Draft saved to your Films list");

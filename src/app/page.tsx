@@ -7,6 +7,7 @@ import { useHover } from "@/hooks/useHover";
 import { FilmCard, ContinueWatchingCard, RankedFilmCard, EditorsPickCard } from "@/components/film/FilmCard";
 import { ShelfRow } from "@/components/film/ShelfRow";
 import { bg, film, rating, initials, FILMS } from "@/lib/data";
+import { publishedToFilm } from "@/lib/uploadTypes";
 
 // Photographic films only — the hero is the biggest visual on the page, and the
 // gradient-only films (no real still) would look noticeably weaker in rotation here.
@@ -106,6 +107,10 @@ function CreatorSpotlightCard({ name, meta }: { name: string; meta: string }) {
 
 export default function HomePage() {
   const { openPlayer, openDetail } = useFilmActions();
+  const { publishedFilms } = useApp();
+  // Negative ids are the two seed demo titles (already in the static catalog elsewhere on
+  // this page) — only genuinely new creator uploads get added here.
+  const uploadedFilms = publishedFilms.filter((f) => f.id > 0 && f.status === "published").map(publishedToFilm);
 
   const [heroIndex, setHeroIndex] = useState(0);
   const heroTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -122,7 +127,7 @@ export default function HomePage() {
 
   const discussed = FILMS.slice().sort((a, b) => b.comments - a.comments).slice(0, 6);
   const award = [3, 1, 7, 5].map(film);
-  const newOn = [8, 6, 2, 4, 7].map(film);
+  const newOn = [...uploadedFilms, ...[8, 6, 2, 4, 7].map(film)];
   const classics = [5, 3, 1, 6].map(film);
   const festivals = [7, 3, 5, 1].map(film);
   const creators = [
@@ -178,8 +183,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Shelves */}
-      <div style={{ position: "relative", zIndex: 2, marginTop: -96, padding: "0 clamp(20px, 3.5vw, 84px) 72px", display: "flex", flexDirection: "column", gap: 56 }}>
+      {/* Shelves — the -44px overlap (vs the hero's 100px bottom padding) leaves a ~56px
+          gap to "Continue watching", matching the gap between every other rail below,
+          while still overlapping enough for the hero's gradient to blend smoothly. */}
+      <div style={{ position: "relative", zIndex: 2, marginTop: -44, padding: "0 clamp(20px, 3.5vw, 84px) 72px", display: "flex", flexDirection: "column", gap: 56 }}>
 
         <section>
           <h2 style={{ margin: "0 0 20px", fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Continue watching</h2>

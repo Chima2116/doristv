@@ -79,18 +79,17 @@ export function CreatorStudio() {
 
   // ---- films ----
   const stTag = (label: string, kind: "live" | "review" | "draft"): CSSProperties => ({ fontSize: 10, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", borderRadius: 4, padding: "3px 8px", display: "inline-block", background: kind === "live" ? "var(--success-subtle)" : kind === "review" ? "var(--warning-subtle)" : "var(--surface-3)", color: kind === "live" ? "var(--success)" : kind === "review" ? "var(--warning)" : "var(--text-secondary)" });
-  const filmDefs = [
-    { img: 1 as number | null, imgUrl: undefined as string | undefined, id: undefined as string | undefined, title: "The Weight of Water", meta: "Drama · 1h 38m", status: "Live", vis: "Public · Free", ok: "live" as const, views: "41.9k", rev: "₦148,200", comp: 68, score: "9.4" },
-    { img: 4 as number | null, imgUrl: undefined as string | undefined, id: undefined as string | undefined, title: "Second Rain", meta: "Drama · 1h 36m", status: "Live", vis: "Public · Premium", ok: "live" as const, views: "6.3k", rev: "₦52,300", comp: 55, score: "8.1" },
-    ...publishedFilms.map((f) => ({
-      img: null, imgUrl: f.posterUrl || undefined, id: f.id, title: f.title,
-      meta: `${f.genres[0] || "Film"} · ${f.runtime}`,
-      status: f.status === "published" ? "Live" : f.status === "scheduled" ? "Scheduled" : "Draft",
-      vis: f.status === "published" ? "Public · " + f.tier : "Hidden",
-      ok: f.status === "published" ? "live" as const : f.status === "scheduled" ? "review" as const : "draft" as const,
-      views: f.status === "published" ? "0" : "—", rev: "₦0", comp: 0, score: "—",
-    })),
-  ];
+  const filmDefs = publishedFilms.map((f) => ({
+    imgUrl: f.posterUrl || undefined, id: f.id, title: f.title,
+    meta: `${f.genres[0] || "Film"} · ${f.runtime}`,
+    status: f.status === "published" ? "Live" : f.status === "scheduled" ? "Scheduled" : "Draft",
+    vis: f.status === "published" ? "Public · " + f.tier : "Hidden",
+    ok: f.status === "published" ? "live" as const : f.status === "scheduled" ? "review" as const : "draft" as const,
+    views: f.stats?.views ?? (f.status === "published" ? "0" : "—"),
+    rev: f.stats?.revenue ?? "₦0",
+    comp: f.stats?.completionPct ?? 0,
+    score: f.stats?.score ?? "—",
+  }));
   const filmRows = filmDefs.filter((f) => filmFilter === "All" || (filmFilter === "Live" && f.ok === "live") || (filmFilter === "In Review" && f.ok === "review"));
 
   // ---- analytics ----
@@ -318,10 +317,17 @@ export function CreatorStudio() {
                   <div style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr 1fr 1fr 1.1fr 1fr 0.8fr", padding: "14px 20px", fontSize: 10, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--text-tertiary)", borderBottom: "1px solid var(--border-subtle)" }}>
                     <span>Film</span><span>Status</span><span>Views</span><span>Revenue</span><span>Completion</span><span>Community</span><span style={{ textAlign: "right" }}>Actions</span>
                   </div>
-                  {filmRows.map((f, i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr 1fr 1fr 1.1fr 1fr 0.8fr", padding: "14px 20px", alignItems: "center", borderBottom: "1px solid var(--border-subtle)" }}>
+                  {filmRows.map((f) => (
+                    <div
+                      key={f.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/studio/films/${f.id}`)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(`/studio/films/${f.id}`); } }}
+                      style={{ display: "grid", gridTemplateColumns: "2.4fr 1fr 1fr 1fr 1.1fr 1fr 0.8fr", padding: "14px 20px", alignItems: "center", borderBottom: "1px solid var(--border-subtle)", cursor: "pointer" }}
+                    >
                       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                        <span style={{ width: 46, height: 62, flex: "none", borderRadius: 6, background: f.imgUrl ? `url("${f.imgUrl}") center / cover no-repeat` : f.img ? bg(f.img, "40%") : "var(--surface-3)" }} />
+                        <span style={{ width: 46, height: 62, flex: "none", borderRadius: 6, background: f.imgUrl ? `url("${f.imgUrl}") center / cover no-repeat` : "var(--surface-3)" }} />
                         <div style={{ minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.title}</div><div style={{ fontSize: 11.5, color: "var(--text-tertiary)" }}>{f.meta}</div></div>
                       </div>
                       <div><span style={stTag(f.status, f.ok)}>{f.status}</span><div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>{f.vis}</div></div>
@@ -329,15 +335,10 @@ export function CreatorStudio() {
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>{f.rev}</span>
                       <div><div style={{ fontFamily: "var(--font-mono)", fontSize: 12, marginBottom: 5 }}>{f.comp ? f.comp + "%" : "—"}</div><div style={{ height: 5, borderRadius: 999, background: "var(--surface-3)", overflow: "hidden" }}><div style={{ height: "100%", width: (f.comp || 0) + "%", background: "var(--accent)", borderRadius: 999 }} /></div></div>
                       <div style={{ display: "flex", alignItems: "center", gap: 7 }}><span style={{ width: 8, height: 8, flex: "none", borderRadius: "50%", background: f.ok === "live" ? "var(--success)" : "var(--text-tertiary)" }} /><span style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}>{f.score}</span></div>
-                      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                        {f.id ? (
-                          <button onClick={() => router.push(`/studio/films/${f.id}`)} title="Film dashboard" style={{ width: 32, height: 32, border: "1px solid var(--border-strong)", borderRadius: 8, background: "none", color: "var(--text-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" /><rect x="14" y="3" width="7" height="5" /><rect x="14" y="12" width="7" height="9" /><rect x="3" y="16" width="7" height="5" /></svg></button>
-                        ) : (
-                          <>
-                            <button onClick={() => go("analytics")} title="Analytics" style={{ width: 32, height: 32, border: "1px solid var(--border-strong)", borderRadius: 8, background: "none", color: "var(--text-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3v18h18" /><path d="m7 14 4-4 3 3 5-6" /></svg></button>
-                            <button onClick={() => go("comments")} title="Community" style={{ width: 32, height: 32, border: "1px solid var(--border-strong)", borderRadius: 8, background: "none", color: "var(--text-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg></button>
-                          </>
-                        )}
+                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                        <span title="Open film dashboard" style={{ width: 32, height: 32, border: "1px solid var(--border-strong)", borderRadius: 8, color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                        </span>
                       </div>
                     </div>
                   ))}

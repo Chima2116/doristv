@@ -24,7 +24,7 @@ export default function FilmDashboardPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { getPublishedFilm, updateFilm, showToast } = useApp();
-  const film = getPublishedFilm(params.id);
+  const film = getPublishedFilm(Number(params.id));
   const [tab, setTab] = useState<Tab>("overview");
 
   if (!film) {
@@ -40,11 +40,16 @@ export default function FilmDashboardPage() {
     );
   }
 
-  const kpis: [string, string, string][] = [
-    ["Views", "0", "no views yet"], ["Watch time", "0 hrs", "just published"],
-    ["Revenue", naira(0), film.tier === "free" ? "free titles don't earn directly" : "first sale pending"],
-    ["Comments", "0", "start the conversation"],
-  ];
+  const kpis: [string, string, string][] = film.stats
+    ? [
+        ["Views", film.stats.views, "all time"], ["Watch time", film.stats.watchTime, `${film.stats.completionPct}% avg completion`],
+        ["Revenue", film.stats.revenue, "this period"], ["Comments", film.stats.comments, `score ${film.stats.score}`],
+      ]
+    : [
+        ["Views", "0", "no views yet"], ["Watch time", "0 hrs", "just published"],
+        ["Revenue", naira(0), film.tier === "free" ? "free titles don't earn directly" : "first sale pending"],
+        ["Comments", "0", "start the conversation"],
+      ];
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: "var(--canvas)", fontFamily: "var(--font-ui)", color: "var(--text-primary)" }}>
@@ -124,7 +129,7 @@ export default function FilmDashboardPage() {
               <div style={card}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span style={{ color: "var(--text-tertiary)" }}>Pending payout</span>
-                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{naira(0)}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{film.stats ? film.stats.revenue : naira(0)}</span>
                 </div>
               </div>
               <div style={card}>

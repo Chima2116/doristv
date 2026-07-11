@@ -32,11 +32,35 @@ interface AppContextValue extends AppState {
   setPayMethod: (m: PayMethod) => void;
   confirmPay: () => void;
   publishFilm: (film: PublishedFilm) => void;
-  getPublishedFilm: (id: string) => PublishedFilm | undefined;
-  updateFilm: (id: string, patch: Partial<PublishedFilm>) => void;
+  getPublishedFilm: (id: number) => PublishedFilm | undefined;
+  updateFilm: (id: number, patch: Partial<PublishedFilm>) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
+
+// Two flagship titles pre-seeded into Studio (negative ids so they can never collide with
+// a real upload's Date.now()-based id) so the Films list and Film Dashboard have something
+// real to browse in the demo — matching the numbers already shown elsewhere in Studio.
+const SEED_FILMS: PublishedFilm[] = [
+  {
+    id: -1, title: "The Weight of Water", synopsis: "Yemisi left Makoko at seventeen and swore she would never come back. When her father's fishing boat is found empty on the lagoon, she returns to a community that remembers everything.",
+    posterUrl: "/films/film-weight-of-water.png", backdropUrl: "/films/film-weight-of-water.png", trailerUrl: null,
+    runtime: "1h 38m", year: 2024, genres: ["Drama"], languages: ["English", "Yoruba"], country: "Nigeria", ageRating: "PG-13",
+    creator: "Kemi Adetiba", crew: [{ id: "seed-1-director", name: "Kemi Adetiba", role: "Director" }],
+    tier: "free", community: { timestamped: true, creatorNotes: true, featuredMoments: true },
+    status: "published", scheduledAt: null, createdAt: Date.now() - 90 * 86400000,
+    stats: { views: "41.9k", watchTime: "1,020 hrs", revenue: "₦148,200", comments: "214", completionPct: 68, score: "9.4" },
+  },
+  {
+    id: -2, title: "Second Rain", synopsis: "After the flood took the farm, the Adeyemi family waits for the second rain — the one that decides everything.",
+    posterUrl: "/films/film-danfo-nights.png", backdropUrl: "/films/film-danfo-nights.png", trailerUrl: null,
+    runtime: "1h 36m", year: 2023, genres: ["Drama"], languages: ["English", "Yoruba"], country: "Nigeria", ageRating: "PG-13",
+    creator: "Kemi Adetiba", crew: [{ id: "seed-2-director", name: "Kemi Adetiba", role: "Director" }],
+    tier: "premium", community: { timestamped: true, creatorNotes: true, featuredMoments: true },
+    status: "published", scheduledAt: null, createdAt: Date.now() - 30 * 86400000,
+    stats: { views: "6.3k", watchTime: "210 hrs", revenue: "₦52,300", comments: "39", completionPct: 55, score: "8.1" },
+  },
+];
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [watchLater, setWatchLater] = useState<number[]>([4, 3]);
@@ -49,7 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pay, setPay] = useState<"form" | "success" | null>(null);
   const [payFilmId, setPayFilmId] = useState<number | null>(null);
   const [payMethod, setPayMethod] = useState<PayMethod>("card");
-  const [publishedFilms, setPublishedFilms] = useState<PublishedFilm[]>([]);
+  const [publishedFilms, setPublishedFilms] = useState<PublishedFilm[]>(SEED_FILMS);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -103,8 +127,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const publishFilm = useCallback((film: PublishedFilm) => {
     setPublishedFilms((prev) => [film, ...prev.filter((f) => f.id !== film.id)]);
   }, []);
-  const getPublishedFilm = useCallback((id: string) => publishedFilms.find((f) => f.id === id), [publishedFilms]);
-  const updateFilm = useCallback((id: string, patch: Partial<PublishedFilm>) => {
+  const getPublishedFilm = useCallback((id: number) => publishedFilms.find((f) => f.id === id), [publishedFilms]);
+  const updateFilm = useCallback((id: number, patch: Partial<PublishedFilm>) => {
     setPublishedFilms((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   }, []);
 

@@ -16,6 +16,10 @@ export interface Film {
   language: string;
   trending?: boolean;
   trailerUrl?: string;
+  /** Only set for creator-uploaded films (see uploadTypes.ts) — real object/remote URLs
+   * that take priority over the static IMGS/GRADS lookup in bg()/filmBg(). */
+  posterUrl?: string;
+  backdropUrl?: string;
 }
 
 /** Hover-preview clips (muted/looped, Netflix-style). Placeholder public sample footage
@@ -48,8 +52,17 @@ export const GRADS: Record<number, string> = {
   8: "linear-gradient(135deg,#0e1a18 0%,#1a2e2a 55%,#28241a 100%)",
 };
 
+const FALLBACK_GRAD = "linear-gradient(135deg,#1c1e22 0%,#2a2c31 55%,#1e2024 100%)";
+
 export function bg(id: number, pos?: string): string {
-  return IMGS[id] ? `url("${IMGS[id]}") center ${pos || "center"} / cover no-repeat` : GRADS[id];
+  return IMGS[id] ? `url("${IMGS[id]}") center ${pos || "center"} / cover no-repeat` : GRADS[id] || FALLBACK_GRAD;
+}
+
+/** Same as bg(), but honors a creator-uploaded film's real poster/backdrop over the
+ * static catalog lookup. Use this instead of bg() anywhere a Film could be user-uploaded. */
+export function filmBg(f: Film, pos?: string, useBackdrop?: boolean): string {
+  const url = useBackdrop ? f.backdropUrl : f.posterUrl;
+  return url ? `url("${url}") center ${pos || "center"} / cover no-repeat` : bg(f.id, pos);
 }
 
 export function rating(f: Film): string {

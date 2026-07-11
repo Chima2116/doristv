@@ -28,7 +28,7 @@ export function MonetizationStep({ draft, update }: { draft: UploadDraft; update
               style={{
                 display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left", gap: 10,
                 padding: 22, borderRadius: "var(--radius-lg)", cursor: "pointer", fontFamily: "var(--font-ui)",
-                background: active ? "var(--accent-subtle)" : "var(--surface-1)",
+                color: "var(--text-primary)", background: active ? "var(--accent-subtle)" : "var(--surface-1)",
                 border: "1px solid " + (active ? "var(--accent)" : "var(--border-subtle)"), transition: "all 150ms var(--ease-standard)",
               }}
             >

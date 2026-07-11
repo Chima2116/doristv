@@ -1,3 +1,5 @@
+import type { Film } from "@/lib/data";
+
 export type CrewRole = "Director" | "Writer" | "Producer" | "Executive Producer" | "Cast" | "Cinematographer" | "Editor" | "Composer" | "Sound Designer";
 export const CREW_ROLES: CrewRole[] = ["Director", "Writer", "Producer", "Executive Producer", "Cast", "Cinematographer", "Editor", "Composer", "Sound Designer"];
 
@@ -76,6 +78,15 @@ export function newDraftId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
 }
 
+let filmIdCounter = 0;
+/** Numeric ids for published films — deliberately far above the 8 seed catalog ids (1-8)
+ * so they can flow through every existing numeric-keyed system (watchLater, likedFilms,
+ * downloaded, rented, /title/[id], /watch/[id]) with zero changes to those systems. */
+export function newFilmId(): number {
+  filmIdCounter += 1;
+  return Date.now() + filmIdCounter;
+}
+
 export function defaultDraft(): UploadDraft {
   return {
     id: newDraftId(),
@@ -93,11 +104,23 @@ export function defaultDraft(): UploadDraft {
   };
 }
 
+/** Only present on the two flagship demo titles seeded into the Studio so their Films
+ * list row and dashboard show real numbers instead of an honest zero-state — a genuine
+ * new upload never has this. */
+export interface FilmStats {
+  views: string;
+  watchTime: string;
+  revenue: string;
+  comments: string;
+  completionPct: number;
+  score: string;
+}
+
 /** What actually gets stored once a draft is published/scheduled/saved — the blob object
  * URLs from this browsing session (posters etc. picked via <input type="file">) survive
  * in memory for the session but were never meant to be durable; that's fine for a demo. */
 export interface PublishedFilm {
-  id: string;
+  id: number;
   title: string;
   synopsis: string;
   posterUrl: string | null;
@@ -109,6 +132,7 @@ export interface PublishedFilm {
   languages: string[];
   country: string;
   ageRating: string;
+  creator: string;
   crew: CrewMember[];
   tier: MonetizationTier;
   price?: number;
@@ -116,16 +140,31 @@ export interface PublishedFilm {
   status: FilmStatus;
   scheduledAt: number | null;
   createdAt: number;
+  stats?: FilmStats;
 }
 
-export function draftToPublished(d: UploadDraft, status: FilmStatus): PublishedFilm {
+export function draftToPublished(d: UploadDraft, id: number, status: FilmStatus): PublishedFilm {
   return {
-    id: d.id, title: d.title.trim() || "Untitled film", synopsis: d.synopsis,
+    id, title: d.title.trim() || "Untitled film", synopsis: d.synopsis,
     posterUrl: d.assets.poster.objectUrl, backdropUrl: d.assets.backdrop.objectUrl, trailerUrl: d.assets.trailer.objectUrl,
     runtime: d.runtimeMinutes ? `${Math.floor(Number(d.runtimeMinutes) / 60)}h ${Number(d.runtimeMinutes) % 60}m` : "—",
     year: Number(d.releaseYear) || new Date().getFullYear(),
     genres: d.genres, languages: d.languages, country: d.country, ageRating: d.ageRating || "PG-13",
+    creator: d.crew.find((c) => c.role === "Director")?.name || d.crew[0]?.name || "Independent filmmaker",
     crew: d.crew, tier: d.tier, price: d.tier === "rent" ? d.rentPrice : undefined,
     community: d.community, status, scheduledAt: d.scheduledAt, createdAt: d.createdAt,
+  };
+}
+
+/** Renders a creator-uploaded film through the same viewer-facing surfaces (FilmCard,
+ * Home rails, Browse, the title detail page) as the static catalog — free_ads collapses
+ * to "free" since the viewer-facing tier model doesn't distinguish ad-supported free. */
+export function publishedToFilm(p: PublishedFilm): Film {
+  return {
+    id: p.id, title: p.title, tier: p.tier === "free_ads" ? "free" : p.tier === "free" ? "free" : p.tier,
+    price: p.price, runtime: p.runtime, genre: p.genres[0] || "Drama", year: p.year,
+    creator: p.creator, comments: 0, synopsis: p.synopsis, language: p.languages.join(" · ") || "English",
+    trending: false, trailerUrl: p.trailerUrl || undefined,
+    posterUrl: p.posterUrl || undefined, backdropUrl: p.backdropUrl || undefined,
   };
 }

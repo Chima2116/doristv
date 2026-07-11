@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useCardExpand } from "@/hooks/useCardExpand";
-import { bg, film, rating, type Film } from "@/lib/data";
+import { filmBg, film, rating, type Film } from "@/lib/data";
 import { tierBadge } from "@/lib/uiStyles";
 
 /** Every movie card on Doris shares one footprint — Editor's Picks set the standard. */
@@ -120,7 +120,7 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVi
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(f.id); } }}
       style={restingStyle}
     >
-      <span style={{ position: "relative", display: "block", width: "100%", aspectRatio: cssAspect, overflow: "hidden", background: bg(f.id, "40%") }}>
+      <span style={{ position: "relative", display: "block", width: "100%", aspectRatio: cssAspect, overflow: "hidden", background: filmBg(f, "40%") }}>
         {poster}
       </span>
 
@@ -213,10 +213,10 @@ function ExpandedCard({ f, rect, placement, heightRatio, settled, poster, onMous
         tabIndex={0}
         onClick={(e) => { e.stopPropagation(); onOpenDetail(); }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenDetail(); } }}
-        style={{ position: "relative", display: "block", width: "100%", height: posterH, background: bg(f.id, "40%"), cursor: "pointer", overflow: "hidden", transition: "height 200ms var(--ease-standard)" }}
+        style={{ position: "relative", display: "block", width: "100%", height: posterH, background: filmBg(f, "40%"), cursor: "pointer", overflow: "hidden", transition: "height 200ms var(--ease-standard)" }}
         aria-label={`${f.title} — view details`}
       >
-        <span style={{ position: "absolute", inset: -4, transform: settled ? "scale(1.045)" : "scale(1)", transition: "transform 220ms var(--ease-standard)", background: bg(f.id, "40%") }} />
+        <span style={{ position: "absolute", inset: -4, transform: settled ? "scale(1.045)" : "scale(1)", transition: "transform 220ms var(--ease-standard)", background: filmBg(f, "40%") }} />
         {previewVideo && f.trailerUrl && !videoError && (
           <video
             ref={videoRef}

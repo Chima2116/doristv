@@ -4,18 +4,24 @@ import { useState } from "react";
 import { useApp } from "@/lib/store";
 import { FilmCard, CARD_WIDTH } from "@/components/film/FilmCard";
 import { FILMS } from "@/lib/data";
+import { publishedToFilm } from "@/lib/uploadTypes";
 import { chipStyle } from "@/lib/uiStyles";
 
 const GENRES = ["All", "Drama", "Thriller", "Comedy", "Romance", "Family", "Anthology"];
 const TIERS = ["All", "Free", "Rent", "Premium"];
 
 export default function BrowsePage() {
-  const { searchQ, setSearchQ } = useApp();
+  const { searchQ, setSearchQ, publishedFilms } = useApp();
   const [genre, setGenre] = useState("All");
   const [tier, setTier] = useState("All");
 
+  // Negative ids are the two seed demo titles already in the static catalog — only
+  // genuinely new creator uploads get added here.
+  const uploaded = publishedFilms.filter((f) => f.id > 0 && f.status === "published").map(publishedToFilm);
+  const catalog = [...uploaded, ...FILMS];
+
   const q = searchQ.trim().toLowerCase();
-  const films = FILMS.filter((f) =>
+  const films = catalog.filter((f) =>
     (genre === "All" || f.genre === genre) &&
     (tier === "All" || f.tier === tier.toLowerCase()) &&
     (!q || f.title.toLowerCase().includes(q) || f.creator.toLowerCase().includes(q) || f.genre.toLowerCase().includes(q))

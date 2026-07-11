@@ -19,14 +19,14 @@ export function RightsStep({ draft, update }: { draft: UploadDraft; update: Upda
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={() => update({ territoryScope: "worldwide" })}
-            style={{ flex: 1, textAlign: "left", padding: 18, borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-ui)", background: draft.territoryScope === "worldwide" ? "var(--accent-subtle)" : "var(--surface-1)", border: "1px solid " + (draft.territoryScope === "worldwide" ? "var(--accent)" : "var(--border-subtle)") }}
+            style={{ flex: 1, textAlign: "left", padding: 18, borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-ui)", color: "var(--text-primary)", background: draft.territoryScope === "worldwide" ? "var(--accent-subtle)" : "var(--surface-1)", border: "1px solid " + (draft.territoryScope === "worldwide" ? "var(--accent)" : "var(--border-subtle)") }}
           >
             <span style={{ display: "block", fontSize: 14, fontWeight: 700 }}>Worldwide</span>
             <span style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>Available to every DORIS territory</span>
           </button>
           <button
             onClick={() => update({ territoryScope: "select" })}
-            style={{ flex: 1, textAlign: "left", padding: 18, borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-ui)", background: draft.territoryScope === "select" ? "var(--accent-subtle)" : "var(--surface-1)", border: "1px solid " + (draft.territoryScope === "select" ? "var(--accent)" : "var(--border-subtle)") }}
+            style={{ flex: 1, textAlign: "left", padding: 18, borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-ui)", color: "var(--text-primary)", background: draft.territoryScope === "select" ? "var(--accent-subtle)" : "var(--surface-1)", border: "1px solid " + (draft.territoryScope === "select" ? "var(--accent)" : "var(--border-subtle)") }}
           >
             <span style={{ display: "block", fontSize: 14, fontWeight: 700 }}>Select territories</span>
             <span style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>Choose exactly where it streams</span>
@@ -44,14 +44,14 @@ export function RightsStep({ draft, update }: { draft: UploadDraft; update: Upda
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={() => update({ licensing: "nonexclusive" })}
-            style={{ flex: 1, textAlign: "left", padding: 18, borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-ui)", background: draft.licensing === "nonexclusive" ? "var(--accent-subtle)" : "var(--surface-1)", border: "1px solid " + (draft.licensing === "nonexclusive" ? "var(--accent)" : "var(--border-subtle)") }}
+            style={{ flex: 1, textAlign: "left", padding: 18, borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-ui)", color: "var(--text-primary)", background: draft.licensing === "nonexclusive" ? "var(--accent-subtle)" : "var(--surface-1)", border: "1px solid " + (draft.licensing === "nonexclusive" ? "var(--accent)" : "var(--border-subtle)") }}
           >
             <span style={{ display: "block", fontSize: 14, fontWeight: 700 }}>Non-exclusive</span>
             <span style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>Keep distributing it elsewhere too</span>
           </button>
           <button
             onClick={() => update({ licensing: "exclusive" })}
-            style={{ flex: 1, textAlign: "left", padding: 18, borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-ui)", background: draft.licensing === "exclusive" ? "var(--accent-subtle)" : "var(--surface-1)", border: "1px solid " + (draft.licensing === "exclusive" ? "var(--accent)" : "var(--border-subtle)") }}
+            style={{ flex: 1, textAlign: "left", padding: 18, borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-ui)", color: "var(--text-primary)", background: draft.licensing === "exclusive" ? "var(--accent-subtle)" : "var(--surface-1)", border: "1px solid " + (draft.licensing === "exclusive" ? "var(--accent)" : "var(--border-subtle)") }}
           >
             <span style={{ display: "block", fontSize: 14, fontWeight: 700 }}>Exclusive to DORIS</span>
             <span style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>Priority placement & promotion</span>

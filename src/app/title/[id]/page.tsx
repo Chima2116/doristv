@@ -6,16 +6,33 @@ import { useFilmActions } from "@/lib/actions";
 import { useNow } from "@/hooks/useNow";
 import { FilmCard } from "@/components/film/FilmCard";
 import { ShelfRow } from "@/components/film/ShelfRow";
-import { bg, film, rating, initials, naira, FILMS, TAGLINES, CREATOR_BIOS } from "@/lib/data";
+import { filmBg, rating, initials, naira, FILMS, TAGLINES, CREATOR_BIOS } from "@/lib/data";
+import { publishedToFilm } from "@/lib/uploadTypes";
 import { tierBadge } from "@/lib/uiStyles";
 
 export default function FilmDetailPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
-  const df = film(id);
   const { router, rentOrPlay, openCreator, openPlayer } = useFilmActions();
-  const { isInWatchLater, toggleWatchLater, likedFilms, toggleLikeFilm, followedSet, toggleFollow, rented, showToast } = useApp();
+  const { isInWatchLater, toggleWatchLater, likedFilms, toggleLikeFilm, followedSet, toggleFollow, rented, showToast, publishedFilms } = useApp();
   const now = useNow();
+
+  // Catalog films are numbered 1-8; anything else is a creator upload (see uploadTypes.ts)
+  // and gets adapted into the same Film shape so every viewer-facing surface (this page,
+  // FilmCard, Home rails, Browse) doesn't need to know the difference.
+  const staticFilm = FILMS.find((f) => f.id === id);
+  const uploaded = publishedFilms.find((f) => f.id === id && f.status === "published");
+  const df = staticFilm || (uploaded ? publishedToFilm(uploaded) : null);
+
+  if (!df) {
+    return (
+      <div style={{ width: "100%", minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, textAlign: "center" }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Film not found</div>
+        <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)" }}>It may have been unpublished, or the link is out of date.</p>
+        <button onClick={() => router.push("/browse")} style={{ minHeight: 46, padding: "0 24px", border: "none", borderRadius: 999, background: "var(--accent)", color: "var(--text-on-accent)", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>Browse films</button>
+      </div>
+    );
+  }
 
   const isRented = !!rented[df.id];
   const rentedAt = rented[df.id];
@@ -42,7 +59,7 @@ export default function FilmDetailPage() {
   return (
     <div style={{ width: "100%", animation: "dorisRise 300ms var(--ease-standard)" }}>
       <section style={{ position: "relative", width: "100%", minHeight: "100vh", marginTop: -64, overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, background: bg(df.id, "20%"), transform: "scale(1.02)" }} />
+        <div style={{ position: "absolute", inset: 0, background: filmBg(df, "20%", true), transform: "scale(1.02)" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(26,27,30,.94) 0%, rgba(26,27,30,.6) 42%, rgba(26,27,30,.1) 72%, rgba(26,27,30,0) 100%)" }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, #1A1B1E 1%, rgba(26,27,30,.35) 30%, rgba(26,27,30,0) 62%)" }} />
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 150, background: "linear-gradient(to bottom, rgba(26,27,30,.7), rgba(26,27,30,0))" }} />

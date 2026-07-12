@@ -275,23 +275,51 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
     const r = barRef.current.getBoundingClientRect();
     return Math.min(1, Math.max(0, (clientX - r.left) / r.width));
   };
-  const onBarDown = (e: React.MouseEvent) => { const rt = ratioAt(e.clientX); setDragging(true); setDragStart(rt); setDragCur(rt); setDragMoved(false); };
-  const onBarMove = (e: React.MouseEvent) => { if (!dragging) return; const rt = ratioAt(e.clientX); setDragCur(rt); setDragMoved((m) => m || Math.abs(rt - dragStart) > 0.008); };
-  const onBarUp = () => {
+  // dragCurRef mirrors dragCur but updates synchronously (not on the next render), so the
+  // window-level mouseup handler below always reads the true final drag position even
+  // though its own closure was captured back when the drag started.
+  const dragCurRef = useRef(0);
+  const onBarDown = (e: React.MouseEvent) => { const rt = ratioAt(e.clientX); dragCurRef.current = rt; setDragging(true); setDragStart(rt); setDragCur(rt); setDragMoved(false); };
+
+  // A real mouse/trackpad drag very easily dips outside this strip's ~34px height for a
+  // moment — it used to cancel the whole gesture via onMouseLeave, silently downgrading an
+  // intended range-select into a single point. Tracking move/up on the window instead (from
+  // the moment the drag starts until it ends) makes the drag survive leaving the strip,
+  // matching how every native scrubber/range-picker actually behaves.
+  useEffect(() => {
     if (!dragging) return;
-    const a = Math.min(dragStart, dragCur), b = Math.max(dragStart, dragCur);
-    if (sceneMode) {
-      const start = Math.round(a * totalDuration);
-      const end = dragMoved ? Math.round(b * totalDuration) : undefined;
-      setDragging(false); setDragMoved(false); setSceneMode(false);
-      setAttach({ start, end }); setPosition(start); setPanelOpen(true); setPanelView("feed");
-      setTimeout(() => composerRef.current?.focus(), 30);
-    } else {
-      const np = Math.round(dragCur * totalDuration);
-      setDragging(false); setDragMoved(false); setPosition(np); seekVideo(np);
-    }
-  };
-  const onBarLeave = () => { if (dragging) { setDragging(false); setDragMoved(false); } };
+    const handleMove = (e: MouseEvent) => {
+      const rt = ratioAt(e.clientX);
+      dragCurRef.current = rt;
+      setDragCur(rt);
+      setDragMoved((m) => m || Math.abs(rt - dragStart) > 0.008);
+    };
+    const handleUp = () => {
+      const cur = dragCurRef.current;
+      const a = Math.min(dragStart, cur), b = Math.max(dragStart, cur);
+      setDragging(false);
+      setDragMoved((moved) => {
+        if (sceneMode) {
+          const start = Math.round(a * totalDuration);
+          const end = moved ? Math.round(b * totalDuration) : undefined;
+          setSceneMode(false);
+          setAttach({ start, end }); setPosition(start); setPanelOpen(true); setPanelView("feed");
+          setTimeout(() => composerRef.current?.focus(), 30);
+        } else {
+          const np = Math.round(cur * totalDuration);
+          setPosition(np); seekVideo(np);
+        }
+        return false;
+      });
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragging, dragStart, sceneMode]);
   const stopEvt = (e: React.SyntheticEvent) => e.stopPropagation();
 
   const moment = (id: number) => moments.find((m) => m.id === id);
@@ -604,7 +632,7 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
         )}
 
         <div style={{ padding: "0 28px" }}>
-          <div ref={barRef} onMouseDown={onBarDown} onMouseMove={onBarMove} onMouseUp={onBarUp} onMouseLeave={onBarLeave} style={{ position: "relative", cursor: sceneMode ? "crosshair" : "pointer" }}>
+          <div ref={barRef} onMouseDown={onBarDown} style={{ position: "relative", cursor: sceneMode ? "crosshair" : "pointer" }}>
             <div style={{ position: "relative", height: 34, display: "flex", alignItems: "center" }}>
               <div style={{ position: "relative", width: "100%", height: dragging || hoverId != null ? 6 : 4, borderRadius: 999, background: "rgba(255,255,255,.16)", transition: "height 150ms var(--ease-standard)" }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: pct(bufferedDisplay) + "%", background: "rgba(255,255,255,.22)", borderRadius: 999 }} />

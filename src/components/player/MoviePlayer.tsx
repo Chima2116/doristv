@@ -22,6 +22,9 @@ interface FeedEntry {
   onJump: () => void;
   replies: PlayerReply[];
   attachment?: { name: string; url: string; type: string };
+  // Present only for comments that live inside a moment's thread — lets edit/delete find
+  // and mutate the right place (moments[i].thread) instead of the flat general[] list.
+  momentId?: number;
 }
 
 function PlayIcon() { return <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3" /></svg>; }
@@ -141,6 +144,12 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [repliesMap, setRepliesMap] = useState<Record<number, PlayerReply[]>>({});
+  // A comment stays until its author deletes it — "own comment" is just name === "You"
+  // (every comment posted through this session's composer), matching how the seeded
+  // creator/community comments are never editable by the viewer either.
+  const [actionsOpenId, setActionsOpenId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [menu, setMenu] = useState<MenuKind>(null);
   // Tracks whether the current Quality/Speed/Subtitles submenu was reached via the Settings
@@ -314,6 +323,32 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
   const cancelScene = () => setSceneMode(false);
   const removeAttach = () => setAttach(null);
 
+  // Deletes from wherever the comment actually lives — a moment's thread (removing the whole
+  // moment, and its timeline pin, once its last comment is gone) or the flat general list.
+  const deleteComment = (entry: FeedEntry) => {
+    if (entry.momentId != null) {
+      setMoments((prev) => prev
+        .map((m) => (m.id === entry.momentId ? { ...m, thread: m.thread.filter((c) => c.id !== entry.id) } : m))
+        .filter((m) => m.thread.length > 0));
+    } else {
+      setGeneral((prev) => prev.filter((c) => c.id !== entry.id));
+    }
+    setActionsOpenId(null);
+    if (editingId === entry.id) { setEditingId(null); setEditDraft(""); }
+  };
+  const startEdit = (entry: FeedEntry) => { setEditingId(entry.id); setEditDraft(entry.text); setActionsOpenId(null); };
+  const cancelEdit = () => { setEditingId(null); setEditDraft(""); };
+  const saveEdit = (entry: FeedEntry) => {
+    const t = editDraft.trim();
+    if (!t && !entry.attachment) return;
+    if (entry.momentId != null) {
+      setMoments((prev) => prev.map((m) => (m.id === entry.momentId ? { ...m, thread: m.thread.map((c) => (c.id === entry.id ? { ...c, text: t } : c)) } : m)));
+    } else {
+      setGeneral((prev) => prev.map((c) => (c.id === entry.id ? { ...c, text: t } : c)));
+    }
+    setEditingId(null); setEditDraft("");
+  };
+
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -343,15 +378,17 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
     setTimeout(() => { if (composerRef.current) composerRef.current.style.height = "auto"; }, 0);
   };
 
-  const feedComment = (c: PlayerReply, extra?: { at?: number; momentId?: number }): FeedEntry => {
+  const feedComment = (c: PlayerReply, extra?: { at?: number; end?: number; momentId?: number }): FeedEntry => {
     const liked = !!likedSet[c.id];
     const replies = repliesMap[c.id] || [];
     return {
       id: c.id, name: c.name, ago: c.ago, text: c.text, isCreator: !!c.isCreator,
       likes: (c.likes || 0) + (liked ? 1 : 0), liked,
-      hasTime: extra?.at != null, time: extra?.at != null ? fmt(extra.at) : "",
+      // A scene comment linked to a range (e.g. 46:48–53:21) shows the full range, not just
+      // its start — matching the range picked on the timeline, not a truncated single stamp.
+      hasTime: extra?.at != null, time: extra?.at != null ? fmt(extra.at) + (extra.end != null ? "–" + fmt(extra.end) : "") : "",
       onJump: extra?.momentId != null ? () => openMoment(extra.momentId as number) : () => {},
-      replies, attachment: c.attachment,
+      replies, attachment: c.attachment, momentId: extra?.momentId,
     };
   };
 
@@ -364,8 +401,8 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
   const chromeOn = chrome || !playing || panelOpen || dragging || !!menu || sceneMode;
 
   const momentsFlat = useMemo(() => {
-    const out: { c: PlayerReply; at: number; momentId: number; kind: MomentType }[] = [];
-    sorted.forEach((m) => m.thread.forEach((c) => out.push({ c, at: m.at, momentId: m.id, kind: m.type })));
+    const out: { c: PlayerReply; at: number; end?: number; momentId: number; kind: MomentType }[] = [];
+    sorted.forEach((m) => m.thread.forEach((c) => out.push({ c, at: m.at, end: m.end, momentId: m.id, kind: m.type })));
     return out;
   }, [sorted]);
 
@@ -537,6 +574,14 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
           })()
         )}
 
+        {/* Click-outside-to-close backdrop for the settings/captions popup. This must live
+            inside "Bottom chrome" (not as its sibling) — that div's own opacity makes it a
+            stacking context, so a z-index here is only ever compared against the popup's
+            z-index (42) within it. Rendered as a sibling instead, its z-index compared against
+            Bottom chrome's own (20) and — being higher — silently covered the popup entirely,
+            swallowing every click on Quality/Speed/Subtitles before it reached a button. */}
+        {menu && <div onClick={() => setMenu(null)} style={{ position: "fixed", inset: 0, zIndex: 38 }} />}
+
         {menu && (
           <div style={{ position: "absolute", right: 28, bottom: 76, width: 236, padding: 8, borderRadius: 14, background: "rgba(16,17,20,.96)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 20px 60px rgba(0,0,0,.6)", zIndex: 42, animation: "mpMenu 160ms var(--ease-standard)" }}>
             {inSettingsFlow && subFromSettings ? (
@@ -662,8 +707,6 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
         </div>
       </div>
 
-      {menu && <div onClick={() => setMenu(null)} style={{ position: "absolute", inset: 0, zIndex: 38 }} />}
-
       {/* Discussion panel */}
       {panelOpen && (
         <div style={panelStyle}>
@@ -738,6 +781,8 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
             )}
             {feed.map((c) => {
               const isReplying = replyTo === c.id;
+              const isMine = c.name === "You";
+              const isEditing = editingId === c.id;
               return (
                 // Flat, divider-separated rows — no per-comment card/border — reads like a
                 // real conversation thread instead of a stack of boxed UI-kit cards.
@@ -749,11 +794,34 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
                         <span style={{ fontSize: 12.5, fontWeight: 700 }}>{c.name}</span>
                         {c.isCreator && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#1A1B1E", background: "#fff", borderRadius: 4, padding: "2px 6px" }}>Creator</span>}
                         <span style={{ fontSize: 11, color: "rgba(255,255,255,.42)" }}>{c.ago}</span>
+                        {isMine && (
+                          <div style={{ position: "relative", marginLeft: "auto" }}>
+                            <button onClick={() => setActionsOpenId((v) => (v === c.id ? null : c.id))} aria-label="Comment actions" style={{ width: 24, height: 24, flex: "none", border: "none", background: "none", color: "rgba(255,255,255,.5)", cursor: "pointer", borderRadius: 6, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+                            </button>
+                            {actionsOpenId === c.id && (
+                              <div style={{ position: "absolute", top: 26, right: 0, width: 128, padding: 5, borderRadius: 10, background: "rgba(20,21,24,.98)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 14px 40px rgba(0,0,0,.55)", zIndex: 25, animation: "mpMenu 140ms var(--ease-standard)" }}>
+                                <button onClick={() => startEdit(c)} style={{ display: "block", width: "100%", textAlign: "left", minHeight: 32, padding: "0 9px", border: "none", borderRadius: 7, background: "none", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+                                <button onClick={() => deleteComment(c)} style={{ display: "block", width: "100%", textAlign: "left", minHeight: 32, padding: "0 9px", border: "none", borderRadius: 7, background: "none", color: "var(--error)", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>Delete</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 4 }}>
-                        {c.hasTime && <button onClick={c.onJump} style={{ flex: "none", fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, color: "var(--warning)", background: "var(--warning-subtle)", border: "none", borderRadius: 5, padding: "2px 7px", cursor: "pointer" }}>{c.time}</button>}
-                        {c.text && <div style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,.92)" }}>{c.text}</div>}
-                      </div>
+                      {isEditing ? (
+                        <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 6 }}>
+                          <textarea value={editDraft} onChange={(e) => { autosize(e.target, 120); setEditDraft(e.target.value); }} rows={2} autoFocus style={{ width: "100%", resize: "none", minHeight: 50, maxHeight: 120, overflowY: "auto", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 10, padding: "8px 10px", fontSize: 12.5, color: "#fff", outline: "none", lineHeight: 1.45, fontFamily: "var(--font-ui)" }} />
+                          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                            <button onClick={cancelEdit} style={{ minHeight: 28, padding: "0 11px", background: "none", border: "none", borderRadius: 999, color: "rgba(255,255,255,.6)", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "var(--font-ui)" }}>Cancel</button>
+                            <button onClick={() => saveEdit(c)} style={{ minHeight: 28, padding: "0 13px", background: "#fff", border: "none", borderRadius: 999, color: "#1A1B1E", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "var(--font-ui)" }}>Save</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 4 }}>
+                          {c.hasTime && <button onClick={c.onJump} style={{ flex: "none", fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, color: "var(--warning)", background: "var(--warning-subtle)", border: "none", borderRadius: 5, padding: "2px 7px", cursor: "pointer" }}>{c.time}</button>}
+                          {c.text && <div style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,.92)" }}>{c.text}</div>}
+                        </div>
+                      )}
                       {c.attachment && <div style={{ marginTop: 8 }}><AttachmentChip name={c.attachment.name} url={c.attachment.url} type={c.attachment.type} /></div>}
                       <div style={{ display: "flex", gap: 14, marginTop: 7 }}>
                         <button onClick={() => toggleLike(c.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 600, color: c.liked ? "#fff" : "rgba(255,255,255,.5)", padding: 0 }}><svg width="13" height="13" viewBox="0 0 24 24" fill={c.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z" /></svg>{c.likes}</button>

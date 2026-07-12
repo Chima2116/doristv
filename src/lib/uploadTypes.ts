@@ -126,6 +126,7 @@ export interface PublishedFilm {
   posterUrl: string | null;
   backdropUrl: string | null;
   trailerUrl: string | null;
+  videoUrl: string | null;
   runtime: string;
   year: number;
   genres: string[];
@@ -146,7 +147,7 @@ export interface PublishedFilm {
 export function draftToPublished(d: UploadDraft, id: number, status: FilmStatus): PublishedFilm {
   return {
     id, title: d.title.trim() || "Untitled film", synopsis: d.synopsis,
-    posterUrl: d.assets.poster.objectUrl, backdropUrl: d.assets.backdrop.objectUrl, trailerUrl: d.assets.trailer.objectUrl,
+    posterUrl: d.assets.poster.objectUrl, backdropUrl: d.assets.backdrop.objectUrl, trailerUrl: d.assets.trailer.objectUrl, videoUrl: d.assets.master.objectUrl,
     runtime: d.runtimeMinutes ? `${Math.floor(Number(d.runtimeMinutes) / 60)}h ${Number(d.runtimeMinutes) % 60}m` : "—",
     year: Number(d.releaseYear) || new Date().getFullYear(),
     genres: d.genres, languages: d.languages, country: d.country, ageRating: d.ageRating || "PG-13",

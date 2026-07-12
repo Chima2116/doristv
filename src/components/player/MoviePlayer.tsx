@@ -98,7 +98,24 @@ function AttachmentChip({ name, url, type, onRemove }: { name: string; url: stri
   );
 }
 
-export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () => void }) {
+export interface PlayerFilm {
+  id: number;
+  title: string;
+  creator: string;
+  metaLine: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+  videoUrl?: string;
+}
+
+export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExit: () => void; film?: PlayerFilm }) {
+  // A real uploaded master plays as itself — no fake runtime, no seeded demo discussion
+  // that belongs to a different film. Only the original flagship demo title (catalog id 1)
+  // keeps the full scripted discussion/scene data; every other film (catalog or upload)
+  // starts from an honest empty state instead of showing "The Weight of Water"'s comments.
+  const isUpload = !!film?.videoUrl;
+  const demoContent = !film || film.id === 1;
+
   // No startAt means a fresh Play/Watch click (not a resume or jump-to-moment) — begin
   // at the beginning and start playing immediately, matching a real "Play" button.
   const [position, setPosition] = useState(startAt ?? 0);
@@ -126,17 +143,20 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   const [repliesMap, setRepliesMap] = useState<Record<number, PlayerReply[]>>({});
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [menu, setMenu] = useState<MenuKind>(null);
+  // Tracks whether the current Quality/Speed/Subtitles submenu was reached via the Settings
+  // list (so picking a value returns you to Settings) or opened directly off the CC shortcut
+  // (so picking a value just closes, matching how a one-tap toggle should behave).
+  const [subFromSettings, setSubFromSettings] = useState(false);
   const [quality, setQuality] = useState("Auto");
   const [captions, setCaptions] = useState("Off");
   const [speed, setSpeed] = useState(1);
-  const [fs, setFs] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState(0);
   const [dragCur, setDragCur] = useState(0);
   const [dragMoved, setDragMoved] = useState(false);
   const [hoverId, setHoverId] = useState<number | null>(null);
-  const [general, setGeneral] = useState<PlayerReply[]>(INITIAL_GENERAL);
-  const [moments, setMoments] = useState<Moment[]>(INITIAL_MOMENTS);
+  const [general, setGeneral] = useState<PlayerReply[]>(demoContent ? INITIAL_GENERAL : []);
+  const [moments, setMoments] = useState<Moment[]>(demoContent ? INITIAL_MOMENTS : []);
 
   const barRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -146,6 +166,9 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
+  // Uploads use the real <video> duration once metadata loads; every other title (demo or
+  // static catalog) keeps the fixed placeholder-clip duration it always used.
+  const totalDuration = isUpload ? videoDuration || 1 : DURATION;
   const [videoError, setVideoError] = useState(false);
   // Starts muted so autoplay isn't blocked by the browser — real, working volume control
   // (not just a mute toggle) lets viewers turn sound on themselves.
@@ -158,13 +181,18 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
     tickTimer.current = setInterval(() => {
       setPosition((p) => {
         if (!playing) return p;
-        const np = Math.min(DURATION, p + 1);
-        setBuffered((b) => Math.min(DURATION, Math.max(b, np + 300)));
+        const np = Math.min(totalDuration, p + 1);
+        setBuffered((b) => Math.min(totalDuration, Math.max(b, np + 300)));
         return np;
       });
     }, 1000);
     return () => { if (tickTimer.current) clearInterval(tickTimer.current); if (hideTimer.current) clearTimeout(hideTimer.current); };
-  }, [playing]);
+  }, [playing, totalDuration]);
+
+  // A real upload is a local blob URL — it's already fully "buffered" the moment its duration
+  // is known, so its progress bar shows that directly instead of the demo clip's fake
+  // buffered-ahead animation (derived at render time, not stored, to avoid a redundant state).
+  const bufferedDisplay = isUpload ? videoDuration || 0 : buffered;
 
   // Real playback, not a slow zoom on a still frame. Chrome's own intersection tracker for
   // muted, audioless video needs a paint cycle to confirm it's on-screen before it'll keep
@@ -204,12 +232,13 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
     setMuted(v === 0);
   };
 
-  // The fictional film runs far longer than the placeholder clip, so a seek maps onto the
-  // clip via modulo — gives a "the picture jumped" feel on scrub instead of a static frame.
+  // The fictional demo film runs far longer than the placeholder clip, so a seek maps onto
+  // the clip via modulo — gives a "the picture jumped" feel on scrub instead of a static
+  // frame. A real upload has no such mismatch: position already is the real video's time.
   const seekVideo = (newPos: number) => {
     const v = videoRef.current;
     if (!v || !videoDuration) return;
-    v.currentTime = newPos % videoDuration;
+    v.currentTime = isUpload ? Math.min(newPos, videoDuration) : newPos % videoDuration;
   };
 
   const scheduleHide = (willPlay: boolean) => {
@@ -228,7 +257,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
     return () => clearTimeout(t);
   }, []);
   const back10 = () => setPosition((p) => { const np = Math.max(0, p - 10); seekVideo(np); return np; });
-  const fwd10 = () => setPosition((p) => { const np = Math.min(DURATION, p + 10); seekVideo(np); return np; });
+  const fwd10 = () => setPosition((p) => { const np = Math.min(totalDuration, p + 10); seekVideo(np); return np; });
 
   const autosize = (el: HTMLTextAreaElement | null, max: number) => { if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, max) + "px"; };
 
@@ -243,13 +272,13 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
     if (!dragging) return;
     const a = Math.min(dragStart, dragCur), b = Math.max(dragStart, dragCur);
     if (sceneMode) {
-      const start = Math.round(a * DURATION);
-      const end = dragMoved ? Math.round(b * DURATION) : undefined;
+      const start = Math.round(a * totalDuration);
+      const end = dragMoved ? Math.round(b * totalDuration) : undefined;
       setDragging(false); setDragMoved(false); setSceneMode(false);
       setAttach({ start, end }); setPosition(start); setPanelOpen(true); setPanelView("feed");
       setTimeout(() => composerRef.current?.focus(), 30);
     } else {
-      const np = Math.round(dragCur * DURATION);
+      const np = Math.round(dragCur * totalDuration);
       setDragging(false); setDragMoved(false); setPosition(np); seekVideo(np);
     }
   };
@@ -326,7 +355,12 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
     };
   };
 
-  const scene = sceneAt(position);
+  // Scene beats/names are scripted demo content for the flagship title's narrative — a real
+  // upload (or any other catalog title) just has no such data, so keep the marker safe
+  // (center-cropped, unlabeled) instead of showing "Weight of Water" scene names on it.
+  const scene = demoContent ? sceneAt(position) : { at: position, name: "", pos: "center" };
+  const videoSrc = isUpload ? (film!.videoUrl as string) : "https://vjs.zencdn.net/v/oceans.mp4";
+  const errorBg = film?.backdropUrl || film?.posterUrl || "/films/film-weight-of-water.png";
   const chromeOn = chrome || !playing || panelOpen || dragging || !!menu || sceneMode;
 
   const momentsFlat = useMemo(() => {
@@ -380,10 +414,14 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
     return true;
   };
   const markersOn = panelOpen;
-  const pct = (t: number) => (t / DURATION) * 100;
+  const pct = (t: number) => (t / totalDuration) * 100;
 
   const rangeBands = sorted.filter((m) => m.end && markerVisible(m.type));
-  const activeMoment = moment(activeId) || moments[2];
+  // Falls back to an empty placeholder moment when there's no seeded discussion data
+  // (any upload, or any catalog title besides the flagship demo) — this is computed
+  // unconditionally every render, so it must never be undefined even though the "moment"
+  // panel view it feeds is only reachable when markers actually exist to open it.
+  const activeMoment = moment(activeId) || moments[2] || { id: -1, at: 0, type: "community" as MomentType, thread: [] as PlayerReply[] };
   const active = { typeLabel: typeMeta(activeMoment.type).label, time: fmt(activeMoment.at) + (activeMoment.end ? "–" + fmt(activeMoment.end) : ""), title: activeMoment.title || sceneAt(activeMoment.at).name, countLabel: activeMoment.thread.length + (activeMoment.thread.length === 1 ? " comment" : " comments") };
 
   const hm = panelOpen && hoverId != null && !dragging && !sceneMode ? moment(hoverId) : null;
@@ -403,14 +441,20 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   });
   const ctrlHandlers = (key: string) => ({ onMouseEnter: () => setHoverCtrl(key), onMouseLeave: () => setHoverCtrl((h) => (h === key ? null : h)) });
 
+  // Every submenu opened from Settings returns to the Settings root on selection (instead of
+  // closing the whole menu) so switching between Quality/Speed/Subtitles is a real back-and-
+  // forth flow, not a one-shot popup you have to reopen from the gear each time. Opened
+  // directly off the CC shortcut, a selection just closes — there's no "settings" to return to.
+  const inSettingsFlow = menu === "quality" || menu === "speed" || menu === "captions";
+  const closeSubmenu = () => setMenu(subFromSettings ? "settings" : null);
   let menuTitle = "", menuItems: { label: string; sub?: string; selected: boolean; onClick: () => void }[] = [];
-  if (menu === "quality") { menuTitle = "Quality"; menuItems = ["Auto", "1080p", "720p", "480p", "360p"].map((v) => ({ label: v, sub: v === "Auto" ? "Adjusts to your connection" : undefined, selected: quality === v, onClick: () => { setQuality(v); setMenu(null); } })); }
-  else if (menu === "captions") { menuTitle = "Subtitles / CC"; menuItems = ["Off", "English", "Yoruba"].map((v) => ({ label: v, selected: captions === v, onClick: () => { setCaptions(v); setMenu(null); } })); }
-  else if (menu === "speed") { menuTitle = "Playback speed"; menuItems = [[0.5, "0.5×"], [0.75, "0.75×"], [1, "Normal"], [1.25, "1.25×"], [1.5, "1.5×"], [2, "2×"]].map(([v, l]) => ({ label: l as string, selected: speed === v, onClick: () => { setSpeed(v as number); setMenu(null); } })); }
+  if (menu === "quality") { menuTitle = "Quality"; menuItems = ["Auto", "1080p", "720p", "480p", "360p"].map((v) => ({ label: v, sub: v === "Auto" ? "Adjusts to your connection" : undefined, selected: quality === v, onClick: () => { setQuality(v); closeSubmenu(); } })); }
+  else if (menu === "captions") { menuTitle = "Subtitles / CC"; menuItems = ["Off", "English", "Yoruba"].map((v) => ({ label: v, selected: captions === v, onClick: () => { setCaptions(v); closeSubmenu(); } })); }
+  else if (menu === "speed") { menuTitle = "Playback speed"; menuItems = [[0.5, "0.5×"], [0.75, "0.75×"], [1, "Normal"], [1.25, "1.25×"], [1.5, "1.5×"], [2, "2×"]].map(([v, l]) => ({ label: l as string, selected: speed === v, onClick: () => { setSpeed(v as number); closeSubmenu(); } })); }
   else if (menu === "settings") { menuTitle = "Settings"; menuItems = [
-    { label: "Quality", sub: quality, selected: false, onClick: () => setMenu("quality") },
-    { label: "Playback speed", sub: speed === 1 ? "Normal" : speed + "×", selected: false, onClick: () => setMenu("speed") },
-    { label: "Subtitles", sub: captions, selected: false, onClick: () => setMenu("captions") },
+    { label: "Quality", sub: quality, selected: false, onClick: () => { setSubFromSettings(true); setMenu("quality"); } },
+    { label: "Playback speed", sub: speed === 1 ? "Normal" : speed + "×", selected: false, onClick: () => { setSubFromSettings(true); setMenu("speed"); } },
+    { label: "Subtitles", sub: captions, selected: false, onClick: () => { setSubFromSettings(true); setMenu("captions"); } },
   ]; }
 
   const glass: CSSProperties = { background: "rgba(10,11,13,.96)", backdropFilter: "blur(34px) saturate(1.4)", border: "1px solid rgba(255,255,255,.16)", boxShadow: "0 30px 90px rgba(0,0,0,.7)" };
@@ -424,13 +468,13 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   return (
     <div onMouseMove={wake} style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#000", fontFamily: "var(--font-ui)", color: "#fff" }}>
       {videoError ? (
-        <div style={{ position: "absolute", inset: 0, background: `url("/films/film-weight-of-water.png") ${scene.pos} / cover no-repeat`, transform: playing ? "scale(1.06)" : "scale(1.0)", transition: "transform 24s linear" }} />
+        <div style={{ position: "absolute", inset: 0, background: `url("${errorBg}") ${scene.pos} / cover no-repeat`, transform: playing ? "scale(1.06)" : "scale(1.0)", transition: "transform 24s linear" }} />
       ) : (
         <video
           ref={videoRef}
-          src="https://vjs.zencdn.net/v/oceans.mp4"
+          src={videoSrc}
           muted={muted}
-          loop
+          loop={!isUpload}
           playsInline
           preload="auto"
           onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration || 0)}
@@ -446,8 +490,8 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em", textShadow: "0 1px 12px rgba(0,0,0,.5)" }}>The Weight of Water</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,.65)" }}>Kemi Adetiba · 2024 · Free with ads</div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em", textShadow: "0 1px 12px rgba(0,0,0,.5)" }}>{film?.title || "The Weight of Water"}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,.65)" }}>{film ? `${film.creator} · ${film.metaLine}` : "Kemi Adetiba · 2024 · Free with ads"}</div>
         </div>
       </div>
 
@@ -470,26 +514,24 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
         {hm && (
           (() => {
             const top = hm.thread[0];
-            const hsc = sceneAt(hm.at);
             const pctPos = Math.min(86, Math.max(14, pct(hm.at)));
-            const tm = typeMeta(hm.type);
             return (
-              <div style={{ position: "absolute", bottom: "100%", left: `calc(28px + (100% - 56px) * ${(pctPos / 100).toFixed(4)})`, transform: "translate(-50%, -12px)", width: 264, borderRadius: 16, overflow: "hidden", background: "rgba(14,15,18,.92)", backdropFilter: "blur(20px) saturate(1.3)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 22px 60px rgba(0,0,0,.6)", animation: "mpFade 160ms var(--ease-standard)", pointerEvents: "none", zIndex: 30 }}>
-                <div style={{ position: "relative", height: 96, background: `url("/films/film-weight-of-water.png") ${hsc.pos} / cover no-repeat`, borderTopLeftRadius: 15, borderTopRightRadius: 15 }}>
-                  <span style={{ position: "absolute", left: 9, bottom: 8, fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: "#fff", background: "rgba(0,0,0,.5)", borderRadius: 5, padding: "2px 7px", backdropFilter: "blur(4px)" }}>{fmt(hm.at)}{hm.end ? "–" + fmt(hm.end) : ""}</span>
-                  <span style={{ position: "absolute", right: 8, bottom: 8, fontSize: 8.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", borderRadius: 4, padding: "2px 6px", background: tm.bg, color: tm.color, border: tm.border }}>{tm.label}</span>
-                </div>
-                <div style={{ padding: "11px 13px 13px" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>{hm.title || hsc.name}</div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <span style={{ width: 24, height: 24, flex: "none", borderRadius: "50%", background: "rgba(255,255,255,.14)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8.5, fontWeight: 800, boxShadow: top.isCreator ? "0 0 0 1.5px #fff" : "none" }}>{initials(top.name)}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>{top.name}{top.isCreator && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "#1A1B1E", background: "#fff", borderRadius: 3, padding: "1px 4px" }}>Creator</span>}</div>
-                      <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.75)", lineHeight: 1.45, marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{top.text}</div>
-                    </div>
+              // Compact annotation-style hover card — avatar, name, an amber timecode pill,
+              // and the comment text, no thumbnail — matches the Frame.io reference instead
+              // of the old movie-still preview card.
+              <div style={{ position: "absolute", bottom: "100%", left: `calc(28px + (100% - 56px) * ${(pctPos / 100).toFixed(4)})`, transform: "translate(-50%, -14px)", width: 252, borderRadius: 14, padding: "12px 13px", background: "rgba(16,17,20,.97)", backdropFilter: "blur(20px) saturate(1.3)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 22px 60px rgba(0,0,0,.6)", animation: "mpFade 160ms var(--ease-standard)", pointerEvents: "none", zIndex: 30 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 24, height: 24, flex: "none", borderRadius: "50%", background: hm.type === "featured" ? "var(--warning)" : "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: hm.type === "featured" ? "#fff" : "#1A1B1E", boxShadow: top.isCreator ? "0 0 0 1.5px #1A1B1E" : "none" }}>{initials(top.name)}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 5 }}>{top.name}{top.isCreator && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "#1A1B1E", background: "#fff", borderRadius: 3, padding: "1px 4px" }}>Creator</span>}</div>
+                    <div style={{ fontSize: 10.5, color: "rgba(255,255,255,.45)" }}>{top.ago}</div>
                   </div>
-                  <div style={{ fontSize: 10.5, color: "rgba(255,255,255,.5)", marginTop: 9, fontWeight: 600 }}>{hm.thread.length} comment{hm.thread.length === 1 ? "" : "s"} · click to open</div>
                 </div>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 7, marginTop: 8 }}>
+                  <span style={{ flex: "none", fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 700, color: "var(--warning)", background: "var(--warning-subtle)", borderRadius: 5, padding: "2px 6px" }}>{fmt(hm.at)}{hm.end ? "–" + fmt(hm.end) : ""}</span>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.85)", lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{hm.title || top.text}</div>
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.45)", marginTop: 8, fontWeight: 600 }}>{hm.thread.length} comment{hm.thread.length === 1 ? "" : "s"} · click to open</div>
               </div>
             );
           })()
@@ -497,7 +539,13 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
 
         {menu && (
           <div style={{ position: "absolute", right: 28, bottom: 76, width: 236, padding: 8, borderRadius: 14, background: "rgba(16,17,20,.96)", backdropFilter: "blur(24px)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 20px 60px rgba(0,0,0,.6)", zIndex: 42, animation: "mpMenu 160ms var(--ease-standard)" }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "rgba(255,255,255,.5)", padding: "4px 10px 8px" }}>{menuTitle}</div>
+            {inSettingsFlow && subFromSettings ? (
+              <button onClick={() => setMenu("settings")} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "4px 10px 8px", border: "none", background: "none", cursor: "pointer", color: "rgba(255,255,255,.5)", fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase" }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>{menuTitle}
+              </button>
+            ) : (
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "rgba(255,255,255,.5)", padding: "4px 10px 8px" }}>{menuTitle}</div>
+            )}
             {menuItems.map((mi, i) => (
               <button key={i} onClick={mi.onClick} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", minHeight: 38, padding: "0 10px", border: "none", borderRadius: 9, cursor: "pointer", background: mi.selected ? "rgba(255,255,255,.1)" : "transparent", color: "#fff", fontFamily: "var(--font-ui)", textAlign: "left" }}>
                 <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
@@ -511,51 +559,67 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
         )}
 
         <div style={{ padding: "0 28px" }}>
-          <div ref={barRef} onMouseDown={onBarDown} onMouseMove={onBarMove} onMouseUp={onBarUp} onMouseLeave={onBarLeave} style={{ position: "relative", height: 34, display: "flex", alignItems: "center", cursor: sceneMode ? "crosshair" : "pointer" }}>
-            <div style={{ position: "relative", width: "100%", height: dragging || hoverId != null ? 6 : 4, borderRadius: 999, background: "rgba(255,255,255,.16)", transition: "height 150ms var(--ease-standard)" }}>
-              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: pct(buffered) + "%", background: "rgba(255,255,255,.22)", borderRadius: 999 }} />
-              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: pct(position) + "%", background: "#fff", borderRadius: 999 }} />
+          <div ref={barRef} onMouseDown={onBarDown} onMouseMove={onBarMove} onMouseUp={onBarUp} onMouseLeave={onBarLeave} style={{ position: "relative", cursor: sceneMode ? "crosshair" : "pointer" }}>
+            <div style={{ position: "relative", height: 34, display: "flex", alignItems: "center" }}>
+              <div style={{ position: "relative", width: "100%", height: dragging || hoverId != null ? 6 : 4, borderRadius: 999, background: "rgba(255,255,255,.16)", transition: "height 150ms var(--ease-standard)" }}>
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: pct(bufferedDisplay) + "%", background: "rgba(255,255,255,.22)", borderRadius: 999 }} />
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: pct(position) + "%", background: "#fff", borderRadius: 999 }} />
 
-              {markersOn && rangeBands.map((m) => {
-                const sel = panelOpen && panelView === "moment" && activeId === m.id;
-                return (
-                  <button key={m.id} onClick={(e) => { e.stopPropagation(); openMoment(m.id); }} onMouseDown={stopEvt} onMouseEnter={() => setHoverId(m.id)} onMouseLeave={() => setHoverId(null)} aria-label={`Discussion range ${fmt(m.at)} to ${fmt(m.end || 0)}`}
-                    style={{ position: "absolute", left: pct(m.at) + "%", width: pct(m.end || m.at) - pct(m.at) + "%", top: "50%", transform: "translateY(-50%)", height: 8, borderRadius: 4, border: "none", cursor: "pointer", background: sel ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.28)", boxShadow: sel ? "0 0 0 1.5px rgba(255,255,255,.8), 0 0 12px rgba(255,255,255,.5)" : "none", animation: "mpFade 240ms var(--ease-standard) both", transition: "background 150ms var(--ease-standard), box-shadow 150ms var(--ease-standard)", zIndex: 3, pointerEvents: sceneMode ? "none" : "auto" }} />
-                );
-              })}
+                {/* Scene-comment range selection — amber to match the timecode badges
+                    elsewhere, and persists on the timeline (not just mid-drag) until posted
+                    or cancelled, closer to Frame.io's held selection than a one-frame flash. */}
+                {showDragBand && <div style={{ position: "absolute", left: dragBandLeft + "%", width: dragBandWidth + "%", top: "50%", transform: "translateY(-50%)", height: 10, borderRadius: 5, background: "var(--warning)", boxShadow: "0 0 0 1.5px rgba(255,255,255,.9)", zIndex: 5, pointerEvents: "none" }} />}
+                {attach && !dragging && (
+                  <div style={{ position: "absolute", left: pct(attach.start) + "%", width: Math.max(0.6, pct(attach.end ?? attach.start) - pct(attach.start)) + "%", top: "50%", transform: "translateY(-50%)", height: 10, borderRadius: 5, background: "var(--warning)", boxShadow: "0 0 0 1.5px rgba(255,255,255,.9)", zIndex: 5, pointerEvents: "none" }} />
+                )}
 
-              {showDragBand && <div style={{ position: "absolute", left: dragBandLeft + "%", width: dragBandWidth + "%", top: "50%", transform: "translateY(-50%)", height: 10, borderRadius: 5, background: "rgba(255,255,255,.45)", boxShadow: "0 0 0 1.5px rgba(255,255,255,.9)", zIndex: 5, pointerEvents: "none" }} />}
-
-              {markersOn && sorted.filter((m) => markerVisible(m.type)).map((m, i) => {
-                const selected = panelOpen && panelView === "moment" && activeId === m.id;
-                const hovered = hoverId === m.id;
-                const scale = hovered || selected ? (selected ? " scale(1.55)" : " scale(1.5)") : "";
-                const ring = selected ? ", 0 0 0 3px rgba(255,255,255,.9), 0 0 14px rgba(255,255,255,.7)" : "";
-                const anim = (m.type === "creator" ? "mpMkRot" : "mpMk") + " 220ms var(--ease-standard) both";
-                const delay = i * 28 + "ms";
-                const base: CSSProperties = { position: "absolute", left: pct(m.at) + "%", top: "50%", padding: 0, border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "transform 160ms var(--ease-standard), box-shadow 160ms var(--ease-standard)", background: "transparent", zIndex: selected ? 6 : 4, pointerEvents: sceneMode ? "none" : "auto", animation: anim, animationDelay: delay };
-                let markerStyle: CSSProperties;
-                if (m.type === "creator") markerStyle = { ...base, width: 11, height: 11, borderRadius: 2.5, border: "1.8px solid #fff", background: "rgba(26,27,30,.9)", transform: "translate(-50%,-50%) rotate(45deg)" + scale, boxShadow: selected ? "0 0 0 3px rgba(255,255,255,.9)" : "none" };
-                else if (m.type === "discussed") markerStyle = { ...base, width: 13, height: 13, borderRadius: "50%", background: "#fff", transform: "translate(-50%,-50%)" + scale, boxShadow: "0 0 12px rgba(255,255,255,.85)" + ring };
-                else if (m.type === "featured") markerStyle = { ...base, width: 16, height: 16, borderRadius: "50%", background: "#fff", transform: "translate(-50%,-50%)" + scale, boxShadow: "0 1px 6px rgba(0,0,0,.4)" + ring };
-                else markerStyle = { ...base, width: 8, height: 8, borderRadius: "50%", background: "rgba(255,255,255,.65)", transform: "translate(-50%,-50%)" + scale, boxShadow: "0 0 0 3px rgba(0,0,0,.35)" + ring };
-                return (
-                  <button key={m.id} onClick={(e) => { e.stopPropagation(); openMoment(m.id); }} onMouseDown={stopEvt} onMouseEnter={() => setHoverId(m.id)} onMouseLeave={() => setHoverId(null)} aria-label={typeMeta(m.type).label + " at " + fmt(m.at)} style={markerStyle}>
-                    {m.type === "featured" && <svg width="9" height="9" viewBox="0 0 24 24" fill="#1A1B1E"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z" /></svg>}
-                  </button>
-                );
-              })}
-
-              <span style={{ position: "absolute", left: pct(position) + "%", top: "50%", transform: "translate(-50%,-50%)", width: 13, height: 13, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 6px rgba(0,0,0,.6)", pointerEvents: "none", zIndex: 7 }} />
+                <span style={{ position: "absolute", left: pct(position) + "%", top: "50%", transform: "translate(-50%,-50%)", width: 13, height: 13, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 6px rgba(0,0,0,.6)", pointerEvents: "none", zIndex: 7 }} />
+              </div>
             </div>
+
+            {/* Comment pins — avatar bubbles below the scrubber with a connector tick up to
+                it (and a horizontal line for range comments), instead of abstract dots sitting
+                on top of the track — shows who's talking, not just that something happened. */}
+            {markersOn && sorted.filter((m) => markerVisible(m.type)).length > 0 && (
+              <div style={{ position: "relative", height: 32 }}>
+                {rangeBands.map((m) => (
+                  <span key={"range-" + m.id} style={{ position: "absolute", left: pct(m.at) + "%", width: Math.max(0, pct(m.end || m.at) - pct(m.at)) + "%", top: 10, height: 2, borderRadius: 999, background: "rgba(255,255,255,.22)", pointerEvents: "none" }} />
+                ))}
+                {sorted.filter((m) => markerVisible(m.type)).map((m) => (
+                  <span key={"tick-" + m.id} style={{ position: "absolute", left: pct(m.at) + "%", top: 0, width: 1, height: 8, background: "rgba(255,255,255,.28)", transform: "translateX(-50%)", pointerEvents: "none" }} />
+                ))}
+                {sorted.filter((m) => markerVisible(m.type)).map((m, i) => {
+                  const selected = panelOpen && panelView === "moment" && activeId === m.id;
+                  const hovered = hoverId === m.id;
+                  const top = m.thread[0];
+                  return (
+                    <button
+                      key={m.id} onClick={(e) => { e.stopPropagation(); openMoment(m.id); }} onMouseDown={stopEvt} onMouseEnter={() => setHoverId(m.id)} onMouseLeave={() => setHoverId(null)}
+                      aria-label={typeMeta(m.type).label + " by " + top.name + " at " + fmt(m.at)}
+                      style={{
+                        position: "absolute", left: pct(m.at) + "%", top: 6, transform: `translateX(-50%) scale(${hovered || selected ? 1.15 : 1})`,
+                        width: 21, height: 21, borderRadius: "50%", border: "none", padding: 0, cursor: "pointer",
+                        background: m.type === "featured" ? "var(--warning)" : "#fff", color: m.type === "featured" ? "#fff" : "#1A1B1E",
+                        fontSize: 8.5, fontWeight: 800, fontFamily: "var(--font-ui)", display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        boxShadow: selected ? "0 0 0 2px #1A1B1E, 0 0 10px rgba(255,255,255,.6)" : hovered ? "0 0 0 2px rgba(0,0,0,.35)" : "0 2px 6px rgba(0,0,0,.4)",
+                        transition: "transform 150ms var(--ease-standard), box-shadow 150ms var(--ease-standard)",
+                        animation: "mpMk 220ms var(--ease-standard) both", animationDelay: i * 28 + "ms",
+                        zIndex: selected ? 6 : 4, pointerEvents: sceneMode ? "none" : "auto",
+                      }}
+                    >
+                      {initials(top.name)}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {!playing && panelOpen && !sceneMode && (
             <div style={{ display: "flex", gap: 18, padding: "2px 2px 8px", fontSize: 10.5, color: "rgba(255,255,255,.55)", fontWeight: 600, animation: "mpFade 240ms var(--ease-standard)" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "rgba(255,255,255,.6)" }} />Community</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 2, transform: "rotate(45deg)", border: "1.6px solid #fff" }} />Creator note</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: "50%", background: "#fff", boxShadow: "0 0 10px rgba(255,255,255,.8)" }} />Most discussed</span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><svg width="7" height="7" viewBox="0 0 24 24" fill="#1A1B1E"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z" /></svg></span>Featured</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--accent)" }} />Comment</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--warning)" }} />Featured</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 14, height: 2, borderRadius: 999, background: "rgba(255,255,255,.4)" }} />Scene range</span>
             </div>
           )}
 
@@ -579,7 +643,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
 
             <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "#fff" }}>{fmt(position)}</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "rgba(255,255,255,.4)" }}>/ 1:38:00</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "rgba(255,255,255,.4)" }}>/ {fmt(totalDuration)}</span>
             </div>
 
             {scene.name && <span style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,.45)" }}>{scene.name}</span>}
@@ -591,14 +655,9 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700 }}>{totalComments}</span>
             </button>
 
-            <button onClick={() => setMenu((m) => (m === "captions" ? null : "captions"))} style={iconBtn("captions", menu === "captions" || captions !== "Off")} {...ctrlHandlers("captions")} aria-label="Captions" title="Subtitles / CC"><CaptionsBadge active={captions !== "Off"} /></button>
+            <button onClick={() => { setSubFromSettings(false); setMenu((m) => (m === "captions" ? null : "captions")); }} style={iconBtn("captions", menu === "captions" || captions !== "Off")} {...ctrlHandlers("captions")} aria-label="Captions" title="Subtitles / CC"><CaptionsBadge active={captions !== "Off"} /></button>
 
-            <button onClick={() => setMenu((m) => (m === "settings" ? null : "settings"))} style={iconBtn("settings", menu === "settings")} {...ctrlHandlers("settings")} aria-label="Settings" title="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg></button>
-
-            <button onClick={() => setFs((v) => !v)} style={iconBtn("fullscreen", false, 36)} {...ctrlHandlers("fullscreen")} aria-label="Fullscreen" title="Fullscreen">
-              {!fs ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3" /></svg>
-                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3" /></svg>}
-            </button>
+            <button onClick={() => setMenu((m) => (m === "settings" ? null : "settings"))} style={iconBtn("settings", menu === "settings" || (inSettingsFlow && subFromSettings))} {...ctrlHandlers("settings")} aria-label="Settings" title="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg></button>
           </div>
         </div>
       </div>

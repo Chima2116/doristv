@@ -45,7 +45,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 const SEED_FILMS: PublishedFilm[] = [
   {
     id: -1, title: "The Weight of Water", synopsis: "Yemisi left Makoko at seventeen and swore she would never come back. When her father's fishing boat is found empty on the lagoon, she returns to a community that remembers everything.",
-    posterUrl: "/films/film-weight-of-water.png", backdropUrl: "/films/film-weight-of-water.png", trailerUrl: null,
+    posterUrl: "/films/film-weight-of-water.png", backdropUrl: "/films/film-weight-of-water.png", trailerUrl: null, videoUrl: null,
     runtime: "1h 38m", year: 2024, genres: ["Drama"], languages: ["English", "Yoruba"], country: "Nigeria", ageRating: "PG-13",
     creator: "Kemi Adetiba", crew: [{ id: "seed-1-director", name: "Kemi Adetiba", role: "Director" }],
     tier: "free", community: { timestamped: true, creatorNotes: true, featuredMoments: true },
@@ -54,7 +54,7 @@ const SEED_FILMS: PublishedFilm[] = [
   },
   {
     id: -2, title: "Second Rain", synopsis: "After the flood took the farm, the Adeyemi family waits for the second rain — the one that decides everything.",
-    posterUrl: "/films/film-danfo-nights.png", backdropUrl: "/films/film-danfo-nights.png", trailerUrl: null,
+    posterUrl: "/films/film-danfo-nights.png", backdropUrl: "/films/film-danfo-nights.png", trailerUrl: null, videoUrl: null,
     runtime: "1h 36m", year: 2023, genres: ["Drama"], languages: ["English", "Yoruba"], country: "Nigeria", ageRating: "PG-13",
     creator: "Kemi Adetiba", crew: [{ id: "seed-2-director", name: "Kemi Adetiba", role: "Director" }],
     tier: "premium", community: { timestamped: true, creatorNotes: true, featuredMoments: true },

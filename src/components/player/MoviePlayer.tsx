@@ -33,6 +33,46 @@ function VolumeIcon({ muted }: { muted: boolean }) {
     </svg>
   );
 }
+// Standard "skip 10s" convention — a partial-circle arrow with the duration set inside it,
+// matching the transport icons used by most premium players instead of a bare curved arrow.
+function Replay10Icon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.5 9a8.5 8.5 0 1 1-1 6.5" />
+      <path d="M1 5v4h4" />
+      <text x="12" y="15.2" textAnchor="middle" fontSize="7.5" fontWeight="800" fill="currentColor" stroke="none" fontFamily="var(--font-ui)">10</text>
+    </svg>
+  );
+}
+function Forward10Icon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.5 9a8.5 8.5 0 1 0 1 6.5" />
+      <path d="M23 5v4h-4" />
+      <text x="12" y="15.2" textAnchor="middle" fontSize="7.5" fontWeight="800" fill="currentColor" stroke="none" fontFamily="var(--font-ui)">10</text>
+    </svg>
+  );
+}
+function CommentIcon({ active }: { active: boolean }) {
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>;
+}
+// A literal "CC" badge (bordered rect, filled when captions are on) reads instantly at a
+// glance the way a generic lined-rectangle glyph doesn't — matches the convention viewers
+// already know from every other streaming player.
+function CaptionsBadge({ active }: { active: boolean }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 17, borderRadius: 4, border: "1.6px solid currentColor", fontSize: 9.5, fontWeight: 800, letterSpacing: "0.01em", background: active ? "currentColor" : "none" }}>
+      <span style={{ color: active ? "#141518" : "currentColor" }}>CC</span>
+    </span>
+  );
+}
+function ExpandIcon({ expanded }: { expanded: boolean }) {
+  return expanded ? (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3" /></svg>
+  ) : (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3" /></svg>
+  );
+}
 
 export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () => void }) {
   // No startAt means a fresh Play/Watch click (not a resume or jump-to-moment) — begin
@@ -42,6 +82,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   const [playing, setPlaying] = useState(true);
   const [chrome, setChrome] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(false);
   const [panelView, setPanelView] = useState<PanelView>("feed");
   const [activeId, setActiveId] = useState(3);
   const [tab, setTab] = useState<Tab>("all");
@@ -312,17 +353,16 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   let showDragBand = false, dragBandLeft = 0, dragBandWidth = 0;
   if (dragging && dragMoved && sceneMode) { const a = Math.min(dragStart, dragCur), b = Math.max(dragStart, dragCur); showDragBand = true; dragBandLeft = a * 100; dragBandWidth = (b - a) * 100; }
 
-  // Bottom-bar control redesign: related actions live inside a shared translucent "cluster"
-  // pill (transport, then playback settings) with generous gaps between clusters, instead of
-  // one long unbroken row of icons — gives the bar a clear left-to-right hierarchy.
-  const cluster: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.07)", borderRadius: 999, padding: 3 };
-  const rowDivider = <span style={{ width: 1, height: 20, background: "rgba(255,255,255,.14)", flex: "none" }} />;
-  const ctrlBtn = (key: string, active: boolean, size = 34): CSSProperties => ({
+  // Bottom-bar control redesign: flat icons directly on the gradient, no button "chips" —
+  // hover/active states read through icon opacity + a slight lift instead of a filled pill,
+  // matching the minimal chrome of a premium native player rather than a UI-kit toolbar.
+  const iconBtn = (key: string, active: boolean, size = 34): CSSProperties => ({
     width: size, height: size, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center",
-    border: "none", borderRadius: 999, cursor: "pointer",
-    background: active ? "#fff" : hoverCtrl === key ? "rgba(255,255,255,.14)" : "transparent",
-    color: active ? "#1A1B1E" : "rgba(255,255,255,.85)",
-    transition: "background 150ms var(--ease-standard), color 150ms var(--ease-standard)",
+    border: "none", background: "none", cursor: "pointer", padding: 0,
+    color: active ? "#fff" : "rgba(255,255,255,.8)",
+    opacity: hoverCtrl === key ? 1 : active ? 1 : 0.85,
+    transform: hoverCtrl === key ? "scale(1.08)" : "scale(1)",
+    transition: "opacity 150ms var(--ease-standard), transform 150ms var(--ease-standard), color 150ms var(--ease-standard)",
   });
   const ctrlHandlers = (key: string) => ({ onMouseEnter: () => setHoverCtrl(key), onMouseLeave: () => setHoverCtrl((h) => (h === key ? null : h)) });
 
@@ -337,7 +377,9 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   ]; }
 
   const glass: CSSProperties = { background: "rgba(10,11,13,.96)", backdropFilter: "blur(34px) saturate(1.4)", border: "1px solid rgba(255,255,255,.16)", boxShadow: "0 30px 90px rgba(0,0,0,.7)" };
-  const panelStyle: CSSProperties = { position: "absolute", right: 26, bottom: 108, width: 384, maxHeight: "min(600px, calc(100vh - 180px))", display: "flex", flexDirection: "column", borderRadius: 20, overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", ...glass };
+  const panelStyle: CSSProperties = panelExpanded
+    ? { position: "absolute", right: 26, top: 88, bottom: 108, width: "min(560px, 46vw)", display: "flex", flexDirection: "column", borderRadius: 20, overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "width 220ms var(--ease-standard)", ...glass }
+    : { position: "absolute", right: 26, bottom: 108, width: 384, maxHeight: "min(600px, calc(100vh - 180px))", display: "flex", flexDirection: "column", borderRadius: 20, overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "width 220ms var(--ease-standard)", ...glass };
 
   const composerPlaceholder = panelView === "moment" ? "Add to this moment…" : attach ? "Comment on this scene…" : "Share your thoughts on the film…";
   const attachLabel = attach ? fmt(attach.start) + (attach.end != null ? "–" + fmt(attach.end) : "") : "";
@@ -480,20 +522,21 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "2px 0 18px" }}>
-            <div style={cluster}>
-              <button onClick={togglePlay} style={ctrlBtn("play", false, 36)} {...ctrlHandlers("play")} aria-label="Play/Pause">{playing ? <PauseIcon /> : <PlayIcon />}</button>
-              <button onClick={back10} style={ctrlBtn("back", false)} {...ctrlHandlers("back")} aria-label="Back 10 seconds"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 8 6 12l5 4" /><path d="M6 12h9a5 5 0 0 1 0 10h-2" /></svg></button>
-              <button onClick={fwd10} style={ctrlBtn("fwd", false)} {...ctrlHandlers("fwd")} aria-label="Forward 10 seconds"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m13 8 5 4-5 4" /><path d="M18 12H9a5 5 0 0 0 0 10h2" /></svg></button>
+          <div style={{ display: "flex", alignItems: "center", gap: 22, padding: "2px 0 18px" }}>
+            <button onClick={togglePlay} style={iconBtn("play", false, 36)} {...ctrlHandlers("play")} aria-label="Play/Pause">{playing ? <PauseIcon /> : <PlayIcon />}</button>
+
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 16 }}>
+              <button onClick={back10} style={iconBtn("back", false)} {...ctrlHandlers("back")} aria-label="Back 10 seconds"><Replay10Icon /></button>
+              <button onClick={fwd10} style={iconBtn("fwd", false)} {...ctrlHandlers("fwd")} aria-label="Forward 10 seconds"><Forward10Icon /></button>
             </div>
 
             <div onMouseEnter={() => setVolumeHover(true)} onMouseLeave={() => setVolumeHover(false)} style={{ display: "inline-flex", alignItems: "center" }}>
-              <button onClick={toggleMute} style={ctrlBtn("mute", false)} {...ctrlHandlers("mute")} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"}><VolumeIcon muted={muted} /></button>
+              <button onClick={toggleMute} style={iconBtn("mute", false)} {...ctrlHandlers("mute")} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"}><VolumeIcon muted={muted} /></button>
               <input
                 type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
                 onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
                 aria-label="Volume"
-                style={{ width: volumeHover ? 72 : 0, opacity: volumeHover ? 1 : 0, marginLeft: volumeHover ? 4 : 0, accentColor: "#fff", cursor: "pointer", transition: "width 200ms var(--ease-standard), opacity 150ms var(--ease-standard), margin-left 200ms var(--ease-standard)" }}
+                style={{ width: volumeHover ? 72 : 0, opacity: volumeHover ? 1 : 0, marginLeft: volumeHover ? 6 : 0, accentColor: "#fff", cursor: "pointer", transition: "width 200ms var(--ease-standard), opacity 150ms var(--ease-standard), margin-left 200ms var(--ease-standard)" }}
               />
             </div>
 
@@ -502,29 +545,22 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "rgba(255,255,255,.4)" }}>/ 1:38:00</span>
             </div>
 
-            {scene.name && <span style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,.55)", padding: "4px 11px", borderRadius: 999, background: "rgba(255,255,255,.06)" }}>{scene.name}</span>}
+            {scene.name && <span style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,.45)" }}>{scene.name}</span>}
 
             <span style={{ flex: 1 }} />
 
-            <button onClick={toggleComments} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 36, padding: "0 14px", border: "none", borderRadius: 999, cursor: "pointer", background: panelOpen ? "#fff" : hoverCtrl === "comments" ? "rgba(255,255,255,.16)" : "rgba(255,255,255,.08)", color: panelOpen ? "#1A1B1E" : "#fff", transition: "background 150ms var(--ease-standard), color 150ms var(--ease-standard)", fontFamily: "var(--font-ui)" }} {...ctrlHandlers("comments")} title="Comments" aria-label="Comments">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{totalComments}</span>
+            <button onClick={toggleComments} style={{ ...iconBtn("comments", panelOpen, 34), display: "inline-flex", alignItems: "center", gap: 7, width: "auto" }} {...ctrlHandlers("comments")} title="Comments" aria-label="Comments">
+              <CommentIcon active={panelOpen} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, fontWeight: 700 }}>{totalComments}</span>
             </button>
 
-            {rowDivider}
+            <button onClick={() => setMenu((m) => (m === "captions" ? null : "captions"))} style={iconBtn("captions", menu === "captions" || captions !== "Off")} {...ctrlHandlers("captions")} aria-label="Captions" title="Subtitles / CC"><CaptionsBadge active={captions !== "Off"} /></button>
 
-            <div style={cluster}>
-              <button onClick={() => setMenu((m) => (m === "speed" ? null : "speed"))} style={ctrlBtn("speed", menu === "speed")} {...ctrlHandlers("speed")} title="Playback speed"><span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, fontWeight: 700 }}>{speed === 1 ? "1×" : speed + "×"}</span></button>
-              <button onClick={() => setMenu((m) => (m === "captions" ? null : "captions"))} style={ctrlBtn("captions", menu === "captions" || captions !== "Off")} {...ctrlHandlers("captions")} aria-label="Captions" title="Subtitles / CC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M7 12h2m3 0h5" /><path d="M7 15h5m3 0h2" /></svg></button>
-              <button onClick={() => setMenu((m) => (m === "quality" ? null : "quality"))} style={ctrlBtn("quality", menu === "quality")} {...ctrlHandlers("quality")} title="Quality"><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700 }}>{quality === "Auto" ? "Auto" : quality}</span></button>
-              <button onClick={() => setMenu((m) => (m === "settings" ? null : "settings"))} style={ctrlBtn("settings", menu === "settings")} {...ctrlHandlers("settings")} aria-label="Settings" title="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg></button>
-            </div>
+            <button onClick={() => setMenu((m) => (m === "settings" ? null : "settings"))} style={iconBtn("settings", menu === "settings")} {...ctrlHandlers("settings")} aria-label="Settings" title="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg></button>
 
-            {rowDivider}
-
-            <button onClick={() => setFs((v) => !v)} style={ctrlBtn("fullscreen", false, 36)} {...ctrlHandlers("fullscreen")} aria-label="Fullscreen" title="Fullscreen">
-              {!fs ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3" /></svg>
-                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3" /></svg>}
+            <button onClick={() => setFs((v) => !v)} style={iconBtn("fullscreen", false, 36)} {...ctrlHandlers("fullscreen")} aria-label="Fullscreen" title="Fullscreen">
+              {!fs ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3" /></svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3" /></svg>}
             </button>
           </div>
         </div>
@@ -543,6 +579,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
                 <span style={{ fontSize: 14, fontWeight: 800 }}>Discussion</span>
               )}
               <span style={{ flex: 1 }} />
+              <button onClick={() => setPanelExpanded((v) => !v)} aria-label={panelExpanded ? "Collapse panel" : "Expand panel"} title={panelExpanded ? "Collapse" : "Expand"} style={{ width: 30, height: 30, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 8, background: "rgba(255,255,255,.08)", color: "rgba(255,255,255,.72)", cursor: "pointer" }}><ExpandIcon expanded={panelExpanded} /></button>
               <button onClick={closePanel} aria-label="Close" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: 8, background: "rgba(255,255,255,.08)", color: "rgba(255,255,255,.72)", cursor: "pointer", fontSize: 14 }}>✕</button>
             </div>
 
@@ -560,45 +597,44 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
                 </div>
               </>
             ) : (
-              <div style={{ margin: "12px 0 12px", display: "flex", flexDirection: "column", gap: 9 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 10, padding: "0 11px", height: 38 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search comments" style={{ flex: 1, minWidth: 0, background: "none", border: "none", outline: "none", fontSize: 12.5, color: "#fff", fontFamily: "var(--font-ui)" }} />
+              <div style={{ margin: "12px 0 12px", display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ position: "relative" }}>
+                  <button onClick={() => { setFilterMenu((v) => !v); setSortMenu(false); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 10px 0 4px", border: "none", borderRadius: 8, cursor: "pointer", background: filterMenu ? "rgba(255,255,255,.1)" : "none", color: "rgba(255,255,255,.85)", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3" /></svg>{filterLabel}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+                  {filterMenu && (
+                    <div style={{ position: "absolute", top: 38, left: 0, width: 210, padding: 6, borderRadius: 12, background: "rgba(18,19,22,.98)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 18px 50px rgba(0,0,0,.6)", zIndex: 60, animation: "mpMenu 150ms var(--ease-standard)" }}>
+                      {tabDefs.map(([key, label, count]) => (
+                        <button key={key} onClick={() => { setTab(key); setFilterMenu(false); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", minHeight: 34, padding: "0 10px", border: "none", borderRadius: 8, cursor: "pointer", background: tab === key ? "rgba(255,255,255,.12)" : "transparent", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: tab === key ? 700 : 600, textAlign: "left" }}>
+                          <span>{label}</span><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(255,255,255,.5)" }}>{count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <div style={{ position: "relative", flex: 1 }}>
-                    <button onClick={() => { setFilterMenu((v) => !v); setSortMenu(false); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%", height: 36, padding: "0 12px", border: "1px solid rgba(255,255,255,.14)", borderRadius: 9, cursor: "pointer", background: filterMenu ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.05)", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700 }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3" /></svg>{filterLabel}</span>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
-                    </button>
-                    {filterMenu && (
-                      <div style={{ position: "absolute", top: 44, left: 0, width: 210, padding: 6, borderRadius: 12, background: "rgba(18,19,22,.98)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 18px 50px rgba(0,0,0,.6)", zIndex: 60, animation: "mpMenu 150ms var(--ease-standard)" }}>
-                        {tabDefs.map(([key, label, count]) => (
-                          <button key={key} onClick={() => { setTab(key); setFilterMenu(false); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", minHeight: 34, padding: "0 10px", border: "none", borderRadius: 8, cursor: "pointer", background: tab === key ? "rgba(255,255,255,.12)" : "transparent", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: tab === key ? 700 : 600, textAlign: "left" }}>
-                            <span>{label}</span><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "rgba(255,255,255,.5)" }}>{count}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ position: "relative" }}>
-                    <button onClick={() => { setSortMenu((v) => !v); setFilterMenu(false); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 36, padding: "0 13px", border: "1px solid rgba(255,255,255,.14)", borderRadius: 9, cursor: "pointer", background: sortMenu ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.05)", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h12M3 12h9M3 18h6" /></svg>{sortLabel}
-                    </button>
-                    {sortMenu && (
-                      <div style={{ position: "absolute", top: 44, right: 0, width: 180, padding: 6, borderRadius: 12, background: "rgba(18,19,22,.98)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 18px 50px rgba(0,0,0,.6)", zIndex: 60, animation: "mpMenu 150ms var(--ease-standard)" }}>
-                        {sortDefs.map(([key, label]) => (
-                          <button key={key} onClick={() => { setSortBy(key); setSortMenu(false); }} style={{ display: "block", width: "100%", minHeight: 34, padding: "0 10px", border: "none", borderRadius: 8, cursor: "pointer", background: sortBy === key ? "rgba(255,255,255,.12)" : "transparent", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: sortBy === key ? 700 : 600, textAlign: "left" }}>{label}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                <div style={{ position: "relative" }}>
+                  <button onClick={() => { setSortMenu((v) => !v); setFilterMenu(false); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 10px", border: "none", borderRadius: 8, cursor: "pointer", background: sortMenu ? "rgba(255,255,255,.1)" : "none", color: "rgba(255,255,255,.85)", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h12M3 12h9M3 18h6" /></svg>{sortLabel}
+                  </button>
+                  {sortMenu && (
+                    <div style={{ position: "absolute", top: 38, left: 0, width: 180, padding: 6, borderRadius: 12, background: "rgba(18,19,22,.98)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 18px 50px rgba(0,0,0,.6)", zIndex: 60, animation: "mpMenu 150ms var(--ease-standard)" }}>
+                      {sortDefs.map(([key, label]) => (
+                        <button key={key} onClick={() => { setSortBy(key); setSortMenu(false); }} style={{ display: "block", width: "100%", minHeight: 34, padding: "0 10px", border: "none", borderRadius: 8, cursor: "pointer", background: sortBy === key ? "rgba(255,255,255,.12)" : "transparent", color: "#fff", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: sortBy === key ? 700 : 600, textAlign: "left" }}>{label}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span style={{ flex: 1 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.05)", borderRadius: 8, padding: "0 9px", height: 32, width: 150 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="2" strokeLinecap="round" style={{ flex: "none" }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" style={{ flex: 1, minWidth: 0, background: "none", border: "none", outline: "none", fontSize: 12, color: "#fff", fontFamily: "var(--font-ui)" }} />
                 </div>
               </div>
             )}
           </div>
 
-          <div className="mp-scroll" style={{ flex: 1, overflowY: "auto", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 11, minHeight: 0 }}>
+          <div className="mp-scroll" style={{ flex: 1, overflowY: "auto", padding: "6px 18px 14px", minHeight: 0 }}>
             {feed.length === 0 && (
               <div style={{ textAlign: "center", padding: "30px 12px", color: "rgba(255,255,255,.6)" }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{emptyTitle}</div>
@@ -608,23 +644,27 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
             {feed.map((c) => {
               const isReplying = replyTo === c.id;
               return (
-                <div key={c.id} style={{ padding: 12, borderRadius: 13, background: c.isCreator ? "rgba(255,255,255,.1)" : "rgba(255,255,255,.05)", border: "1px solid " + (c.isCreator ? "rgba(255,255,255,.24)" : "rgba(255,255,255,.09)"), animation: "mpFade 220ms var(--ease-standard)" }}>
+                // Flat, divider-separated rows — no per-comment card/border — reads like a
+                // real conversation thread instead of a stack of boxed UI-kit cards.
+                <div key={c.id} style={{ padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,.08)", animation: "mpFade 220ms var(--ease-standard)" }}>
                   <div style={{ display: "flex", gap: 10 }}>
-                    <span style={{ width: 28, height: 28, flex: "none", borderRadius: "50%", background: "rgba(255,255,255,.12)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, boxShadow: c.isCreator ? "0 0 0 1.5px #fff" : "none" }}>{initials(c.name)}</span>
+                    <span style={{ width: 26, height: 26, flex: "none", borderRadius: "50%", background: "rgba(255,255,255,.12)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, boxShadow: c.isCreator ? "0 0 0 1.5px #fff" : "none" }}>{initials(c.name)}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12.5, fontWeight: 700 }}>{c.name}</span>
                         {c.isCreator && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.07em", textTransform: "uppercase", color: "#1A1B1E", background: "#fff", borderRadius: 4, padding: "2px 6px" }}>Creator</span>}
                         <span style={{ fontSize: 11, color: "rgba(255,255,255,.42)" }}>{c.ago}</span>
-                        {c.hasTime && <button onClick={c.onJump} style={{ fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 600, color: "#fff", background: "rgba(255,255,255,.12)", border: "none", borderRadius: 4, padding: "2px 7px", cursor: "pointer" }}>▸ {c.time}</button>}
                       </div>
-                      <div style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,.92)", marginTop: 4 }}>{c.text}</div>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 4 }}>
+                        {c.hasTime && <button onClick={c.onJump} style={{ flex: "none", fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, color: "var(--warning)", background: "var(--warning-subtle)", border: "none", borderRadius: 5, padding: "2px 7px", cursor: "pointer" }}>{c.time}</button>}
+                        <div style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,.92)" }}>{c.text}</div>
+                      </div>
                       <div style={{ display: "flex", gap: 14, marginTop: 7 }}>
                         <button onClick={() => toggleLike(c.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 600, color: c.liked ? "#fff" : "rgba(255,255,255,.5)", padding: 0 }}><svg width="13" height="13" viewBox="0 0 24 24" fill={c.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z" /></svg>{c.likes}</button>
                         <button onClick={() => openReply(c.id)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 600, color: isReplying ? "#fff" : "rgba(255,255,255,.5)", padding: 0 }}>Reply</button>
                       </div>
                       {c.replies.length > 0 && (
-                        <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: "2px solid rgba(255,255,255,.14)", display: "flex", flexDirection: "column", gap: 9 }}>
+                        <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: "2px solid rgba(255,255,255,.1)", display: "flex", flexDirection: "column", gap: 9 }}>
                           {c.replies.map((r) => (
                             <div key={r.id} style={{ display: "flex", gap: 8 }}>
                               <span style={{ width: 22, height: 22, flex: "none", borderRadius: "50%", background: "rgba(255,255,255,.12)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8.5, fontWeight: 800, boxShadow: r.isCreator ? "0 0 0 1.5px #fff" : "none" }}>{initials(r.name)}</span>
@@ -637,17 +677,17 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
                         </div>
                       )}
                       {isReplying && (
-                        <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: "2px solid rgba(255,255,255,.35)", display: "flex", flexDirection: "column", gap: 8, animation: "mpFade 200ms var(--ease-standard)" }}>
-                          <textarea value={replyDraft} onChange={(e) => { autosize(e.target, 150); setReplyDraft(e.target.value); }} placeholder={`Reply to ${c.name}…`} rows={2} ref={replyRef} style={{ width: "100%", resize: "none", minHeight: 64, maxHeight: 150, overflowY: "auto", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.18)", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "#fff", outline: "none", lineHeight: 1.5, fontFamily: "var(--font-ui)" }} />
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <button onClick={() => setEmojiOpen((v) => !v)} aria-label="Emoji" style={{ width: 32, height: 32, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,.16)", borderRadius: 8, background: emojiOpen ? "rgba(255,255,255,.12)" : "rgba(255,255,255,.05)", color: "rgba(255,255,255,.75)", cursor: "pointer", transition: "all 150ms" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg></button>
-                            <button aria-label="Attach file" style={{ width: 32, height: 32, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,.16)", borderRadius: 8, background: "rgba(255,255,255,.05)", color: "rgba(255,255,255,.75)", cursor: "pointer" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg></button>
+                        <div style={{ marginTop: 10, paddingLeft: 12, borderLeft: "2px solid rgba(255,255,255,.24)", display: "flex", flexDirection: "column", gap: 8, animation: "mpFade 200ms var(--ease-standard)" }}>
+                          <textarea value={replyDraft} onChange={(e) => { autosize(e.target, 150); setReplyDraft(e.target.value); }} placeholder={`Reply to ${c.name}…`} rows={2} ref={replyRef} style={{ width: "100%", resize: "none", minHeight: 64, maxHeight: 150, overflowY: "auto", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 12, padding: "10px 12px", fontSize: 12.5, color: "#fff", outline: "none", lineHeight: 1.5, fontFamily: "var(--font-ui)" }} />
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <button onClick={() => setEmojiOpen((v) => !v)} aria-label="Emoji" style={{ width: 30, height: 30, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 8, background: emojiOpen ? "rgba(255,255,255,.1)" : "none", color: "rgba(255,255,255,.7)", cursor: "pointer", transition: "background 150ms" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg></button>
+                            <button aria-label="Attach file" style={{ width: 30, height: 30, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 8, background: "none", color: "rgba(255,255,255,.7)", cursor: "pointer" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg></button>
                             <span style={{ flex: 1 }} />
-                            <button onClick={cancelReply} style={{ minHeight: 32, padding: "0 13px", background: "none", border: "1px solid rgba(255,255,255,.18)", borderRadius: 999, color: "rgba(255,255,255,.7)", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "var(--font-ui)" }}>Cancel</button>
-                            <button onClick={() => sendReply(c.id)} aria-label="Send reply" style={{ width: 34, height: 34, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 999, cursor: replyDraft.trim() ? "pointer" : "not-allowed", background: replyDraft.trim() ? "#fff" : "rgba(255,255,255,.12)", color: replyDraft.trim() ? "#1A1B1E" : "rgba(255,255,255,.4)", transition: "all 150ms" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg></button>
+                            <button onClick={cancelReply} style={{ minHeight: 30, padding: "0 12px", background: "none", border: "none", borderRadius: 999, color: "rgba(255,255,255,.6)", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "var(--font-ui)" }}>Cancel</button>
+                            <button onClick={() => sendReply(c.id)} aria-label="Send reply" style={{ width: 32, height: 32, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 999, cursor: replyDraft.trim() ? "pointer" : "not-allowed", background: replyDraft.trim() ? "#fff" : "rgba(255,255,255,.1)", color: replyDraft.trim() ? "#1A1B1E" : "rgba(255,255,255,.4)", transition: "all 150ms" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg></button>
                           </div>
                           {emojiOpen && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, padding: 8, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 10 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, padding: 8, background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10 }}>
                               {EMOJIS.map((ch) => <button key={ch} onClick={() => addEmoji(ch)} style={{ width: 30, height: 30, border: "none", background: "none", borderRadius: 7, cursor: "pointer", fontSize: 16 }}>{ch}</button>)}
                             </div>
                           )}

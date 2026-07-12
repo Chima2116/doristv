@@ -41,7 +41,7 @@ function WatchPageInner() {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>
-      <MoviePlayer startAt={startAt} onExit={() => router.back()} film={film} />
+      <MoviePlayer startAt={startAt} onExit={() => router.back()} onEnded={() => router.push(`/title/${id}`)} film={film} />
     </div>
   );
 }

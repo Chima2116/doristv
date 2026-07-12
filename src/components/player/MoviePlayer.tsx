@@ -101,6 +101,21 @@ function AttachmentChip({ name, url, type, onRemove }: { name: string; url: stri
   );
 }
 
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.63 22 9.24 16.5 14.14 18.18 21 12 17.27 5.82 21 7.5 14.14 2 9.24 8.91 8.63 12 2" />
+    </svg>
+  );
+}
+function FullscreenIcon({ active }: { active: boolean }) {
+  return active ? (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3" /></svg>
+  ) : (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3" /></svg>
+  );
+}
+
 export interface PlayerFilm {
   id: number;
   title: string;
@@ -111,7 +126,7 @@ export interface PlayerFilm {
   videoUrl?: string;
 }
 
-export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExit: () => void; film?: PlayerFilm }) {
+export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: number; onExit: () => void; onEnded?: () => void; film?: PlayerFilm }) {
   // A real uploaded master plays as itself — no fake runtime, no seeded demo discussion
   // that belongs to a different film. Only the original flagship demo title (catalog id 1)
   // keeps the full scripted discussion/scene data; every other film (catalog or upload)
@@ -179,12 +194,28 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
   // static catalog) keeps the fixed placeholder-clip duration it always used.
   const totalDuration = isUpload ? videoDuration || 1 : DURATION;
   const [videoError, setVideoError] = useState(false);
-  // Starts muted so autoplay isn't blocked by the browser — real, working volume control
-  // (not just a mute toggle) lets viewers turn sound on themselves.
-  const [muted, setMuted] = useState(true);
+  // Starts unmuted like every real streaming player — a Watch click is a genuine user
+  // gesture, so browsers allow autoplay-with-sound here. If one blocks it anyway, the
+  // play-retry effect below catches that specific rejection and falls back to muted
+  // playback rather than silently failing to play at all.
+  const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [volumeHover, setVolumeHover] = useState(false);
   const [hoverCtrl, setHoverCtrl] = useState<string | null>(null);
+  const [ended, setEnded] = useState(false);
+  const [rated, setRated] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [fs, setFs] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const redirectedRef = useRef(false);
+
+  // "The movie ended" is driven by the tracked position reaching the (real or fake) total
+  // duration, not the underlying <video> tag's own end/loop — the demo clip is a short
+  // placeholder that loops visually forever while `position` fake-counts up to a full
+  // runtime, so its native `ended` event is meaningless there. Checked at every place
+  // position can reach the end (the tick below, skip-forward, and scrub-seeking) rather
+  // than via a separate effect watching position, which would just be derived state.
+  const maybeEnd = (np: number) => { if (!ended && np >= totalDuration) { setEnded(true); setPlaying(false); } };
 
   useEffect(() => {
     tickTimer.current = setInterval(() => {
@@ -192,16 +223,47 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
         if (!playing) return p;
         const np = Math.min(totalDuration, p + 1);
         setBuffered((b) => Math.min(totalDuration, Math.max(b, np + 300)));
+        maybeEnd(np);
         return np;
       });
     }, 1000);
     return () => { if (tickTimer.current) clearInterval(tickTimer.current); if (hideTimer.current) clearTimeout(hideTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, totalDuration]);
 
   // A real upload is a local blob URL — it's already fully "buffered" the moment its duration
   // is known, so its progress bar shows that directly instead of the demo clip's fake
   // buffered-ahead animation (derived at render time, not stored, to avoid a redundant state).
   const bufferedDisplay = isUpload ? videoDuration || 0 : buffered;
+
+  // Once ended, redirect back to the title page — either the moment the viewer rates
+  // (a beat to let the rating register) or automatically after a short pause if they don't
+  // interact at all, same "we're done here" behavior as every major streaming player.
+  useEffect(() => {
+    if (!ended) return;
+    const delay = rated > 0 ? 1400 : 8000;
+    const t = setTimeout(() => {
+      if (redirectedRef.current) return;
+      redirectedRef.current = true;
+      (onEnded || onExit)();
+    }, delay);
+    return () => clearTimeout(t);
+  }, [ended, rated, onEnded, onExit]);
+
+  const rateFilm = (n: number) => setRated(n);
+
+  // Fullscreen reflects the browser's real fullscreenElement (not just local intent) so it
+  // stays correct even when the viewer exits via Escape or a browser chrome control instead
+  // of this button.
+  useEffect(() => {
+    const onChange = () => setFs(document.fullscreenElement === rootRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+    rootRef.current?.requestFullscreen?.().catch(() => {});
+  };
 
   // Real playback, not a slow zoom on a still frame. Chrome's own intersection tracker for
   // muted, audioless video needs a paint cycle to confirm it's on-screen before it'll keep
@@ -217,7 +279,18 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
     const tryPlay = () => {
       if (cancelled) return;
       v.play().catch((err: DOMException) => {
-        if (cancelled || retriesLeft <= 0 || err.name !== "AbortError") return;
+        if (cancelled) return;
+        // The browser blocked unmuted autoplay (rare once a real user gesture — the Watch
+        // click — started this session, but Safari in particular can still refuse it).
+        // Fall back to muted playback instead of leaving the film paused on a black frame;
+        // the volume control lets the viewer turn sound back on themselves.
+        if (err.name === "NotAllowedError" && !v.muted) {
+          v.muted = true;
+          setMuted(true);
+          v.play().catch(() => {});
+          return;
+        }
+        if (retriesLeft <= 0 || err.name !== "AbortError") return;
         retriesLeft -= 1;
         setTimeout(tryPlay, 150);
       });
@@ -266,7 +339,7 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
     return () => clearTimeout(t);
   }, []);
   const back10 = () => setPosition((p) => { const np = Math.max(0, p - 10); seekVideo(np); return np; });
-  const fwd10 = () => setPosition((p) => { const np = Math.min(totalDuration, p + 10); seekVideo(np); return np; });
+  const fwd10 = () => setPosition((p) => { const np = Math.min(totalDuration, p + 10); seekVideo(np); maybeEnd(np); return np; });
 
   const autosize = (el: HTMLTextAreaElement | null, max: number) => { if (!el) return; el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, max) + "px"; };
 
@@ -307,7 +380,7 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
           setTimeout(() => composerRef.current?.focus(), 30);
         } else {
           const np = Math.round(cur * totalDuration);
-          setPosition(np); seekVideo(np);
+          setPosition(np); seekVideo(np); maybeEnd(np);
         }
         return false;
       });
@@ -531,7 +604,7 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
   const attachLabel = attach ? fmt(attach.start) + (attach.end != null ? "–" + fmt(attach.end) : "") : "";
 
   return (
-    <div onMouseMove={wake} style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#000", fontFamily: "var(--font-ui)", color: "#fff" }}>
+    <div ref={rootRef} onMouseMove={wake} style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#000", fontFamily: "var(--font-ui)", color: "#fff" }}>
       {videoError ? (
         <div style={{ position: "absolute", inset: 0, background: `url("${errorBg}") ${scene.pos} / cover no-repeat`, transform: playing ? "scale(1.06)" : "scale(1.0)", transition: "transform 24s linear" }} />
       ) : (
@@ -543,6 +616,7 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
           playsInline
           preload="auto"
           onLoadedMetadata={(e) => setVideoDuration(e.currentTarget.duration || 0)}
+          onEnded={() => { if (isUpload) { setEnded(true); setPlaying(false); } }}
           onError={() => setVideoError(true)}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", transform: playing ? "scale(1.06)" : "scale(1.0)", transition: "transform 24s linear" }}
         />
@@ -731,9 +805,28 @@ export function MoviePlayer({ startAt, onExit, film }: { startAt?: number; onExi
             <button onClick={() => { setSubFromSettings(false); setMenu((m) => (m === "captions" ? null : "captions")); }} style={iconBtn("captions", menu === "captions" || captions !== "Off")} {...ctrlHandlers("captions")} aria-label="Captions" title="Subtitles / CC"><CaptionsBadge active={captions !== "Off"} /></button>
 
             <button onClick={() => setMenu((m) => (m === "settings" ? null : "settings"))} style={iconBtn("settings", menu === "settings" || (inSettingsFlow && subFromSettings))} {...ctrlHandlers("settings")} aria-label="Settings" title="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg></button>
+
+            <button onClick={toggleFullscreen} style={iconBtn("fullscreen", fs)} {...ctrlHandlers("fullscreen")} aria-label={fs ? "Exit fullscreen" : "Fullscreen"} title={fs ? "Exit fullscreen" : "Fullscreen"}><FullscreenIcon active={fs} /></button>
           </div>
         </div>
       </div>
+
+      {/* Rate prompt — appears in the final 30s and stays through the end, matching every
+          streaming app's "the credits are rolling, tell us what you thought" moment. */}
+      {(ended || totalDuration - position <= 30) && !panelOpen && !sceneMode && (
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 118, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, zIndex: 25, opacity: chromeOn ? 1 : 0, pointerEvents: chromeOn ? "auto" : "none", transition: "opacity 400ms var(--ease-standard)", animation: "mpFade 300ms var(--ease-standard)" }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase", color: "rgba(255,255,255,.55)" }}>Rate</div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, textShadow: "0 2px 12px rgba(0,0,0,.6)" }}>{film?.title || "The Weight of Water"}</div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} onClick={() => rateFilm(n)} onMouseEnter={() => setHoverRating(n)} onMouseLeave={() => setHoverRating(0)} aria-label={`Rate ${n} star${n === 1 ? "" : "s"}`} style={{ border: "none", background: "none", cursor: "pointer", padding: 5, color: n <= (hoverRating || rated) ? "#fff" : "rgba(255,255,255,.35)", transition: "color 120ms var(--ease-standard), transform 120ms var(--ease-standard)", transform: n <= hoverRating ? "scale(1.12)" : "scale(1)" }}>
+                <StarIcon filled={n <= (hoverRating || rated)} />
+              </button>
+            ))}
+          </div>
+          {rated > 0 && <div style={{ fontSize: 12, color: "rgba(255,255,255,.6)" }}>Thanks for rating — taking you back…</div>}
+        </div>
+      )}
 
       {/* Discussion panel */}
       {panelOpen && (

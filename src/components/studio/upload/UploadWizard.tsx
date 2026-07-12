@@ -7,6 +7,7 @@ import { useNow } from "@/hooks/useNow";
 import {
   AssetKey, CrewMember, UploadDraft, defaultDraft, draftToPublished, emptyAsset, newFilmId,
 } from "@/lib/uploadTypes";
+import { deleteBlob, draftAssetKey, filmAssetKey, moveBlob, saveBlob } from "@/lib/mediaStore";
 import { WelcomeStep } from "./steps/WelcomeStep";
 import { AssetsStep } from "./steps/AssetsStep";
 import { DetailsStep } from "./steps/DetailsStep";
@@ -88,13 +89,16 @@ export function UploadWizard() {
   const handleFile = useCallback((key: AssetKey, file: File) => {
     const objectUrl = URL.createObjectURL(file);
     updateAsset(key, { fileName: file.name, fileSize: file.size, objectUrl, status: "uploading", progress: 0 });
+    // The object URL alone won't survive a refresh — persist the actual file bytes now, keyed
+    // to this draft, so a real reload can rebuild a working preview instead of an empty slot.
+    saveBlob(draftAssetKey(draft.id, key), file).catch(() => { /* storage unavailable — the session-only objectUrl still works until reload */ });
     let p = 0;
     const timer = setInterval(() => {
       p = Math.min(100, p + Math.random() * 22 + 12);
       if (p >= 100) { clearInterval(timer); updateAsset(key, { progress: 100, status: "done" }); }
       else updateAsset(key, { progress: p });
     }, 200);
-  }, [updateAsset]);
+  }, [updateAsset, draft.id]);
 
   const removeAsset = useCallback((key: AssetKey) => {
     setDraft((d) => {
@@ -102,13 +106,19 @@ export function UploadWizard() {
       if (cur.objectUrl) URL.revokeObjectURL(cur.objectUrl);
       return { ...d, assets: { ...d.assets, [key]: emptyAsset(cur.kind) } };
     });
-  }, []);
+    deleteBlob(draftAssetKey(draft.id, key)).catch(() => { /* ignore */ });
+  }, [draft.id]);
 
   const addCrew = useCallback((m: CrewMember) => setDraft((d) => ({ ...d, crew: [...d.crew, m] })), []);
   const removeCrew = useCallback((id: string) => setDraft((d) => ({ ...d, crew: d.crew.filter((c) => c.id !== id) })), []);
 
-  const finish = useCallback((status: "published" | "scheduled" | "draft", scheduledAt: number | null) => {
-    const film = draftToPublished({ ...draft, scheduledAt }, newFilmId(), status);
+  const finish = useCallback(async (status: "published" | "scheduled" | "draft", scheduledAt: number | null) => {
+    const id = newFilmId();
+    const film = draftToPublished({ ...draft, scheduledAt }, id, status);
+    // Re-key each asset's persisted blob from this draft to the film's final id, so the
+    // media survives independently of the draft (which gets cleared right after this).
+    const assetKeys: AssetKey[] = ["master", "poster", "backdrop", "trailer"];
+    await Promise.all(assetKeys.map((k) => moveBlob(draftAssetKey(draft.id, k), filmAssetKey(id, k)).catch(() => { /* ignore */ })));
     publishFilm(film);
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
     showToast(status === "published" ? "Your film is live on DORIS TV" : status === "scheduled" ? "Release scheduled" : "Draft saved to your Films list");

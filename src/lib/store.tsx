@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from "react";
 import type { PublishedFilm } from "@/lib/uploadTypes";
+import { deleteBlob, filmAssetKey, loadBlob } from "@/lib/mediaStore";
 
 type PayMethod = "card" | "bank" | "ussd";
 
@@ -38,6 +39,21 @@ interface AppContextValue extends AppState {
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
+const PUBLISHED_KEY = "doris-published-films-v1";
+
+/** Metadata (title, tier, community settings, etc.) is small and JSON-safe, so it's stored
+ * directly in localStorage. The actual media (video/poster/backdrop/trailer) lives in
+ * IndexedDB instead — see mediaStore.ts and the hydration effect below — since the URLs
+ * saved here are already-dead blob: strings by the time they're read back. */
+function loadStoredUploads(): PublishedFilm[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(PUBLISHED_KEY);
+    return raw ? (JSON.parse(raw) as PublishedFilm[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 // Two flagship titles pre-seeded into Studio (negative ids so they can never collide with
 // a real upload's Date.now()-based id) so the Films list and Film Dashboard have something
@@ -74,8 +90,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pay, setPay] = useState<"form" | "success" | null>(null);
   const [payFilmId, setPayFilmId] = useState<number | null>(null);
   const [payMethod, setPayMethod] = useState<PayMethod>("card");
-  const [publishedFilms, setPublishedFilms] = useState<PublishedFilm[]>(SEED_FILMS);
+  // Real uploads (positive ids) are read back from localStorage synchronously so a refresh
+  // doesn't lose the film entirely — their media URLs are stale blob: strings at this point
+  // and get replaced with fresh ones by the hydration effect below, once IndexedDB responds.
+  const [publishedFilms, setPublishedFilms] = useState<PublishedFilm[]>(() => [...loadStoredUploads(), ...SEED_FILMS]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Rebuild a working object URL for each persisted upload's media from the Blobs saved in
+  // IndexedDB at publish time — the URL strings that survived in localStorage are dead the
+  // instant the page reloads, so every asset that was actually saved gets a fresh one here.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const f of publishedFilms) {
+        if (f.id <= 0) continue;
+        const [master, poster, backdrop, trailer] = await Promise.all([
+          loadBlob(filmAssetKey(f.id, "master")),
+          loadBlob(filmAssetKey(f.id, "poster")),
+          loadBlob(filmAssetKey(f.id, "backdrop")),
+          loadBlob(filmAssetKey(f.id, "trailer")),
+        ]);
+        if (cancelled) return;
+        const patch: Partial<PublishedFilm> = {};
+        if (master) patch.videoUrl = URL.createObjectURL(master);
+        if (poster) patch.posterUrl = URL.createObjectURL(poster);
+        if (backdrop) patch.backdropUrl = URL.createObjectURL(backdrop);
+        if (trailer) patch.trailerUrl = URL.createObjectURL(trailer);
+        if (Object.keys(patch).length > 0) {
+          setPublishedFilms((prev) => prev.map((p) => (p.id === f.id ? { ...p, ...patch } : p)));
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // Intentionally runs once on mount only — publishedFilms updates as a *result* of this
+    // effect (patching in fresh URLs), so depending on it would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep localStorage in sync with every real upload (metadata only) as it changes —
+  // publishing, editing settings in the Film Dashboard, deleting, etc.
+  useEffect(() => {
+    try {
+      const uploads = publishedFilms.filter((f) => f.id > 0);
+      localStorage.setItem(PUBLISHED_KEY, JSON.stringify(uploads));
+    } catch { /* storage full/unavailable */ }
+  }, [publishedFilms]);
 
   const showToast = useCallback((msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -134,6 +193,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const deleteFilm = useCallback((id: number) => {
     setPublishedFilms((prev) => prev.filter((f) => f.id !== id));
+    if (id > 0) {
+      (["master", "poster", "backdrop", "trailer"] as const).forEach((k) => {
+        deleteBlob(filmAssetKey(id, k)).catch(() => { /* ignore */ });
+      });
+    }
     showToast("Film deleted");
   }, [showToast]);
 

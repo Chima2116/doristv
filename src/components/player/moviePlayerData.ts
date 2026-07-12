@@ -5,6 +5,7 @@ export interface PlayerReply {
   text: string;
   isCreator?: boolean;
   likes?: number;
+  attachment?: { name: string; url: string; type: string };
 }
 
 export type MomentType = "community" | "creator" | "discussed" | "featured";

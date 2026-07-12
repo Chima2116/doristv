@@ -21,6 +21,7 @@ interface FeedEntry {
   time: string;
   onJump: () => void;
   replies: PlayerReply[];
+  attachment?: { name: string; url: string; type: string };
 }
 
 function PlayIcon() { return <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3" /></svg>; }
@@ -73,6 +74,29 @@ function ExpandIcon({ expanded }: { expanded: boolean }) {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3" /></svg>
   );
 }
+function FileIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /></svg>; }
+
+// A functional attachment chip — image types get a real thumbnail, everything else a file
+// glyph — with either a remove control while composing or a real download link once posted,
+// matching the "attached file" affordance from the Frame.io reference.
+function AttachmentChip({ name, url, type, onRemove }: { name: string; url: string; type: string; onRemove?: () => void }) {
+  const isImage = type.startsWith("image/");
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "6px 7px 6px 6px", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 10, maxWidth: 260 }}>
+      <span style={{ width: 26, height: 26, flex: "none", borderRadius: 6, overflow: "hidden", background: "rgba(255,255,255,.1)", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,.7)" }}>
+        {isImage ? <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <FileIcon />}
+      </span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,.85)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+      {onRemove ? (
+        <button onClick={onRemove} aria-label="Remove attachment" style={{ width: 22, height: 22, flex: "none", border: "none", background: "none", color: "rgba(255,255,255,.55)", cursor: "pointer", fontSize: 13, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+      ) : (
+        <a href={url} download={name} aria-label="Download attachment" title="Download" style={{ width: 22, height: 22, flex: "none", border: "none", background: "none", color: "rgba(255,255,255,.6)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+        </a>
+      )}
+    </div>
+  );
+}
 
 export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () => void }) {
   // No startAt means a fresh Play/Watch click (not a resume or jump-to-moment) — begin
@@ -91,6 +115,8 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   const [filterMenu, setFilterMenu] = useState(false);
   const [sortMenu, setSortMenu] = useState(false);
   const [draft, setDraft] = useState("");
+  const [fileAttach, setFileAttach] = useState<{ name: string; url: string; type: string } | null>(null);
+  const [composerEmojiOpen, setComposerEmojiOpen] = useState(false);
   const [likedSet, setLikedSet] = useState<Record<number, boolean>>({});
   const [attach, setAttach] = useState<{ start: number; end?: number } | null>(null);
   const [sceneMode, setSceneMode] = useState(false);
@@ -114,6 +140,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
 
   const barRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const replyRef = useRef<HTMLTextAreaElement | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tickTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -258,22 +285,32 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   const cancelScene = () => setSceneMode(false);
   const removeAttach = () => setAttach(null);
 
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileAttach({ name: file.name, url: URL.createObjectURL(file), type: file.type });
+    e.target.value = "";
+  };
+  const removeFileAttach = () => setFileAttach(null);
+  const addComposerEmoji = (ch: string) => { setDraft((d) => d + ch); setTimeout(() => composerRef.current?.focus(), 10); };
+
   const postComment = () => {
     const t = draft.trim();
-    if (!t) return;
+    if (!t && !fileAttach) return;
+    const attachment = fileAttach || undefined;
     if (panelView === "moment") {
-      setMoments((prev) => prev.map((m) => (m.id === activeId ? { ...m, thread: [...m.thread, { id: Date.now(), name: "You", ago: "now", text: t, likes: 0 }] } : m)));
+      setMoments((prev) => prev.map((m) => (m.id === activeId ? { ...m, thread: [...m.thread, { id: Date.now(), name: "You", ago: "now", text: t, likes: 0, attachment }] } : m)));
     } else if (attach) {
       const id = Date.now();
-      const m: Moment = { id, at: attach.start, type: "community", thread: [{ id: id + 1, name: "You", ago: "now", text: t, likes: 0 }] };
+      const m: Moment = { id, at: attach.start, type: "community", thread: [{ id: id + 1, name: "You", ago: "now", text: t, likes: 0, attachment }] };
       if (attach.end != null && attach.end - attach.start > 8) m.end = attach.end;
       setMoments((prev) => [...prev, m]);
       setAttach(null); setPosition(attach.start); setTab("moments");
     } else {
-      setGeneral((prev) => [{ id: Date.now(), name: "You", ago: "now", text: t, likes: 0 }, ...prev]);
+      setGeneral((prev) => [{ id: Date.now(), name: "You", ago: "now", text: t, likes: 0, attachment }, ...prev]);
       setTab("general");
     }
-    setDraft("");
+    setDraft(""); setFileAttach(null); setComposerEmojiOpen(false);
     setTimeout(() => { if (composerRef.current) composerRef.current.style.height = "auto"; }, 0);
   };
 
@@ -285,7 +322,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
       likes: (c.likes || 0) + (liked ? 1 : 0), liked,
       hasTime: extra?.at != null, time: extra?.at != null ? fmt(extra.at) : "",
       onJump: extra?.momentId != null ? () => openMoment(extra.momentId as number) : () => {},
-      replies,
+      replies, attachment: c.attachment,
     };
   };
 
@@ -597,9 +634,9 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
                 </div>
               </>
             ) : (
-              <div style={{ margin: "12px 0 12px", display: "flex", alignItems: "center", gap: 4 }}>
-                <div style={{ position: "relative" }}>
-                  <button onClick={() => { setFilterMenu((v) => !v); setSortMenu(false); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 10px 0 4px", border: "none", borderRadius: 8, cursor: "pointer", background: filterMenu ? "rgba(255,255,255,.1)" : "none", color: "rgba(255,255,255,.85)", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700 }}>
+              <div style={{ margin: "12px 0 12px", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <button onClick={() => { setFilterMenu((v) => !v); setSortMenu(false); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 10px 0 4px", border: "none", borderRadius: 8, cursor: "pointer", background: filterMenu ? "rgba(255,255,255,.1)" : "none", color: "rgba(255,255,255,.85)", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3" /></svg>{filterLabel}
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
                   </button>
@@ -613,7 +650,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
                     </div>
                   )}
                 </div>
-                <div style={{ position: "relative" }}>
+                <div style={{ position: "relative", flexShrink: 0 }}>
                   <button onClick={() => { setSortMenu((v) => !v); setFilterMenu(false); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 10px", border: "none", borderRadius: 8, cursor: "pointer", background: sortMenu ? "rgba(255,255,255,.1)" : "none", color: "rgba(255,255,255,.85)", fontFamily: "var(--font-ui)", fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h12M3 12h9M3 18h6" /></svg>{sortLabel}
                   </button>
@@ -625,8 +662,7 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
                     </div>
                   )}
                 </div>
-                <span style={{ flex: 1 }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.05)", borderRadius: 8, padding: "0 9px", height: 32, width: 150 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.05)", borderRadius: 8, padding: "0 9px", height: 32, flex: 1, minWidth: 44 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" strokeWidth="2" strokeLinecap="round" style={{ flex: "none" }}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                   <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" style={{ flex: 1, minWidth: 0, background: "none", border: "none", outline: "none", fontSize: 12, color: "#fff", fontFamily: "var(--font-ui)" }} />
                 </div>
@@ -657,8 +693,9 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
                       </div>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 4 }}>
                         {c.hasTime && <button onClick={c.onJump} style={{ flex: "none", fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 700, color: "var(--warning)", background: "var(--warning-subtle)", border: "none", borderRadius: 5, padding: "2px 7px", cursor: "pointer" }}>{c.time}</button>}
-                        <div style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,.92)" }}>{c.text}</div>
+                        {c.text && <div style={{ fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,.92)" }}>{c.text}</div>}
                       </div>
+                      {c.attachment && <div style={{ marginTop: 8 }}><AttachmentChip name={c.attachment.name} url={c.attachment.url} type={c.attachment.type} /></div>}
                       <div style={{ display: "flex", gap: 14, marginTop: 7 }}>
                         <button onClick={() => toggleLike(c.id)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 600, color: c.liked ? "#fff" : "rgba(255,255,255,.5)", padding: 0 }}><svg width="13" height="13" viewBox="0 0 24 24" fill={c.liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88z" /></svg>{c.likes}</button>
                         <button onClick={() => openReply(c.id)} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 11.5, fontWeight: 600, color: isReplying ? "#fff" : "rgba(255,255,255,.5)", padding: 0 }}>Reply</button>
@@ -711,24 +748,42 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
             {panelView === "moment" && (
               <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 9, fontFamily: "var(--font-mono)", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,.85)", background: "rgba(255,255,255,.09)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 999, padding: "3px 9px" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>pins at {active.time}</div>
             )}
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-              <div style={{ flex: 1, position: "relative" }}>
-                <textarea value={draft} onChange={(e) => { autosize(e.target, 132); setDraft(e.target.value); }} placeholder={composerPlaceholder} rows={1} ref={composerRef} style={{ width: "100%", resize: "none", minHeight: 38, maxHeight: 132, overflowY: "auto", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 11, padding: "9px 12px", fontSize: 13, color: "#fff", outline: "none", lineHeight: 1.4, fontFamily: "var(--font-ui)" }} />
-              </div>
-              {panelView === "feed" && (
-                <div style={{ position: "relative", flex: "none" }}>
-                  <button onClick={startScene} onMouseEnter={() => setShowAttachTip(true)} onMouseLeave={() => setShowAttachTip(false)} aria-label="Comment on a scene" style={{ width: 38, height: 38, flex: "none", border: "1px solid rgba(255,255,255,.16)", borderRadius: 11, cursor: "pointer", background: sceneMode ? "#fff" : "rgba(255,255,255,.06)", color: sceneMode ? "#1A1B1E" : "rgba(255,255,255,.8)", display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "all 150ms" }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="7" y1="8" x2="7" y2="16" /><line x1="13" y1="6" x2="13" y2="18" /><line x1="19" y1="9" x2="19" y2="15" /></svg>
+            {/* Unified bordered composer — text field and its action row share one surface
+                (matching the reference), instead of a bare input with buttons floating beside it. */}
+            <div style={{ border: "1px solid rgba(255,255,255,.14)", borderRadius: 14, background: "rgba(255,255,255,.045)", padding: "10px 10px 8px", display: "flex", flexDirection: "column", gap: fileAttach ? 9 : 2 }}>
+              {fileAttach && <AttachmentChip name={fileAttach.name} url={fileAttach.url} type={fileAttach.type} onRemove={removeFileAttach} />}
+              <textarea value={draft} onChange={(e) => { autosize(e.target, 120); setDraft(e.target.value); }} placeholder={composerPlaceholder} rows={1} ref={composerRef} style={{ width: "100%", resize: "none", minHeight: 22, maxHeight: 120, overflowY: "auto", background: "none", border: "none", padding: 0, fontSize: 13.5, color: "#fff", outline: "none", lineHeight: 1.45, fontFamily: "var(--font-ui)" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf" onChange={onPickFile} style={{ display: "none" }} />
+                <button onClick={() => fileInputRef.current?.click()} aria-label="Attach file" title="Attach file" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: 8, background: "none", color: "rgba(255,255,255,.7)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                </button>
+                <div style={{ position: "relative" }}>
+                  <button onClick={() => setComposerEmojiOpen((v) => !v)} aria-label="Emoji" title="Emoji" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: 8, background: composerEmojiOpen ? "rgba(255,255,255,.1)" : "none", color: "rgba(255,255,255,.7)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" /><line x1="15" y1="9" x2="15.01" y2="9" /></svg>
                   </button>
-                  {showAttachTip && (
-                    <div style={{ position: "absolute", bottom: 46, right: 0, width: 210, padding: "10px 12px", borderRadius: 12, background: "rgba(20,21,24,.96)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 14px 40px rgba(0,0,0,.55)", zIndex: 50, animation: "mpFade 140ms var(--ease-standard)" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Comment on a scene</div>
-                      <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.62)", lineHeight: 1.45, marginTop: 3 }}>Attach your comment to a specific moment in the film.</div>
+                  {composerEmojiOpen && (
+                    <div style={{ position: "absolute", bottom: 36, left: 0, width: 210, display: "flex", flexWrap: "wrap", gap: 4, padding: 8, borderRadius: 12, background: "rgba(18,19,22,.98)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 18px 50px rgba(0,0,0,.6)", zIndex: 60, animation: "mpMenu 150ms var(--ease-standard)" }}>
+                      {EMOJIS.map((ch) => <button key={ch} onClick={() => addComposerEmoji(ch)} style={{ width: 30, height: 30, border: "none", background: "none", borderRadius: 7, cursor: "pointer", fontSize: 16 }}>{ch}</button>)}
                     </div>
                   )}
                 </div>
-              )}
-              <button onClick={postComment} aria-label="Post" style={{ width: 38, height: 38, flex: "none", border: "none", borderRadius: 11, cursor: "pointer", background: draft.trim() ? "#fff" : "rgba(255,255,255,.08)", color: draft.trim() ? "#1A1B1E" : "rgba(255,255,255,.4)", display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "all 150ms" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg></button>
+                {panelView === "feed" && (
+                  <div style={{ position: "relative" }}>
+                    <button onClick={startScene} onMouseEnter={() => setShowAttachTip(true)} onMouseLeave={() => setShowAttachTip(false)} aria-label="Comment on a scene" title="Comment on a scene" style={{ width: 30, height: 30, flex: "none", border: "none", borderRadius: 8, background: sceneMode ? "#fff" : "none", color: sceneMode ? "#1A1B1E" : "rgba(255,255,255,.7)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12" /><line x1="7" y1="8" x2="7" y2="16" /><line x1="13" y1="6" x2="13" y2="18" /><line x1="19" y1="9" x2="19" y2="15" /></svg>
+                    </button>
+                    {showAttachTip && (
+                      <div style={{ position: "absolute", bottom: 36, left: 0, width: 210, padding: "10px 12px", borderRadius: 12, background: "rgba(20,21,24,.96)", border: "1px solid rgba(255,255,255,.14)", boxShadow: "0 14px 40px rgba(0,0,0,.55)", zIndex: 50, animation: "mpFade 140ms var(--ease-standard)" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>Comment on a scene</div>
+                        <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.62)", lineHeight: 1.45, marginTop: 3 }}>Attach your comment to a specific moment in the film.</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <span style={{ flex: 1 }} />
+                <button onClick={postComment} disabled={!draft.trim() && !fileAttach} aria-label="Post" style={{ width: 32, height: 32, flex: "none", border: "none", borderRadius: 999, cursor: draft.trim() || fileAttach ? "pointer" : "not-allowed", background: draft.trim() || fileAttach ? "#fff" : "rgba(255,255,255,.08)", color: draft.trim() || fileAttach ? "#1A1B1E" : "rgba(255,255,255,.4)", display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "all 150ms" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg></button>
+              </div>
             </div>
           </div>
         </div>

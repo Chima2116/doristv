@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { FILMS } from "@/lib/data";
@@ -7,6 +8,14 @@ import { tierBadge } from "@/lib/uiStyles";
 import { MoviePlayer, type PlayerFilm } from "@/components/player/MoviePlayer";
 
 export default function WatchPage() {
+  return (
+    <Suspense fallback={null}>
+      <WatchPageInner />
+    </Suspense>
+  );
+}
+
+function WatchPageInner() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();

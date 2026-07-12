@@ -34,6 +34,7 @@ interface AppContextValue extends AppState {
   publishFilm: (film: PublishedFilm) => void;
   getPublishedFilm: (id: number) => PublishedFilm | undefined;
   updateFilm: (id: number, patch: Partial<PublishedFilm>) => void;
+  deleteFilm: (id: number) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -131,13 +132,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateFilm = useCallback((id: number, patch: Partial<PublishedFilm>) => {
     setPublishedFilms((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   }, []);
+  const deleteFilm = useCallback((id: number) => {
+    setPublishedFilms((prev) => prev.filter((f) => f.id !== id));
+    showToast("Film deleted");
+  }, [showToast]);
 
   const value = useMemo<AppContextValue>(() => ({
     watchLater, rented, likedFilms, followedSet, downloaded, searchQ, toast, pay, payFilmId, payMethod, publishedFilms,
     toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, toggleDownload, setSearchQ, showToast,
-    openPay, closePay, setPayMethod, confirmPay, publishFilm, getPublishedFilm, updateFilm,
+    openPay, closePay, setPayMethod, confirmPay, publishFilm, getPublishedFilm, updateFilm, deleteFilm,
   }), [watchLater, rented, likedFilms, followedSet, downloaded, searchQ, toast, pay, payFilmId, payMethod, publishedFilms,
-    toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, toggleDownload, showToast, openPay, closePay, confirmPay, publishFilm, getPublishedFilm, updateFilm]);
+    toggleWatchLater, isInWatchLater, toggleLikeFilm, toggleFollow, toggleDownload, showToast, openPay, closePay, confirmPay, publishFilm, getPublishedFilm, updateFilm, deleteFilm]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

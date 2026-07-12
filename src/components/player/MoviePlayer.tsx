@@ -83,6 +83,8 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   // (not just a mute toggle) lets viewers turn sound on themselves.
   const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(1);
+  const [volumeHover, setVolumeHover] = useState(false);
+  const [hoverCtrl, setHoverCtrl] = useState<string | null>(null);
 
   useEffect(() => {
     tickTimer.current = setInterval(() => {
@@ -310,7 +312,19 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
   let showDragBand = false, dragBandLeft = 0, dragBandWidth = 0;
   if (dragging && dragMoved && sceneMode) { const a = Math.min(dragStart, dragCur), b = Math.max(dragStart, dragCur); showDragBand = true; dragBandLeft = a * 100; dragBandWidth = (b - a) * 100; }
 
-  const ctrlActive = (a: boolean): CSSProperties => ({ width: 38, height: 38, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 999, cursor: "pointer", background: a ? "rgba(255,255,255,.14)" : "transparent", color: a ? "#fff" : "rgba(255,255,255,.78)", transition: "all 150ms" });
+  // Bottom-bar control redesign: related actions live inside a shared translucent "cluster"
+  // pill (transport, then playback settings) with generous gaps between clusters, instead of
+  // one long unbroken row of icons — gives the bar a clear left-to-right hierarchy.
+  const cluster: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.07)", borderRadius: 999, padding: 3 };
+  const rowDivider = <span style={{ width: 1, height: 20, background: "rgba(255,255,255,.14)", flex: "none" }} />;
+  const ctrlBtn = (key: string, active: boolean, size = 34): CSSProperties => ({
+    width: size, height: size, flex: "none", display: "inline-flex", alignItems: "center", justifyContent: "center",
+    border: "none", borderRadius: 999, cursor: "pointer",
+    background: active ? "#fff" : hoverCtrl === key ? "rgba(255,255,255,.14)" : "transparent",
+    color: active ? "#1A1B1E" : "rgba(255,255,255,.85)",
+    transition: "background 150ms var(--ease-standard), color 150ms var(--ease-standard)",
+  });
+  const ctrlHandlers = (key: string) => ({ onMouseEnter: () => setHoverCtrl(key), onMouseLeave: () => setHoverCtrl((h) => (h === key ? null : h)) });
 
   let menuTitle = "", menuItems: { label: string; sub?: string; selected: boolean; onClick: () => void }[] = [];
   if (menu === "quality") { menuTitle = "Quality"; menuItems = ["Auto", "1080p", "720p", "480p", "360p"].map((v) => ({ label: v, sub: v === "Auto" ? "Adjusts to your connection" : undefined, selected: quality === v, onClick: () => { setQuality(v); setMenu(null); } })); }
@@ -466,35 +480,51 @@ export function MoviePlayer({ startAt, onExit }: { startAt?: number; onExit: () 
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 4, paddingBottom: 16 }}>
-            <button onClick={togglePlay} style={ctrlActive(false)} aria-label="Play/Pause">{playing ? <PauseIcon /> : <PlayIcon />}</button>
-            <button onClick={back10} style={ctrlActive(false)} aria-label="Back 10 seconds"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 8 6 12l5 4" /><path d="M6 12h9a5 5 0 0 1 0 10h-2" /></svg></button>
-            <button onClick={fwd10} style={ctrlActive(false)} aria-label="Forward 10 seconds"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m13 8 5 4-5 4" /><path d="M18 12H9a5 5 0 0 0 0 10h2" /></svg></button>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
-              <button onClick={toggleMute} style={ctrlActive(false)} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"}><VolumeIcon muted={muted} /></button>
+          <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "2px 0 18px" }}>
+            <div style={cluster}>
+              <button onClick={togglePlay} style={ctrlBtn("play", false, 36)} {...ctrlHandlers("play")} aria-label="Play/Pause">{playing ? <PauseIcon /> : <PlayIcon />}</button>
+              <button onClick={back10} style={ctrlBtn("back", false)} {...ctrlHandlers("back")} aria-label="Back 10 seconds"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 8 6 12l5 4" /><path d="M6 12h9a5 5 0 0 1 0 10h-2" /></svg></button>
+              <button onClick={fwd10} style={ctrlBtn("fwd", false)} {...ctrlHandlers("fwd")} aria-label="Forward 10 seconds"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m13 8 5 4-5 4" /><path d="M18 12H9a5 5 0 0 0 0 10h2" /></svg></button>
+            </div>
+
+            <div onMouseEnter={() => setVolumeHover(true)} onMouseLeave={() => setVolumeHover(false)} style={{ display: "inline-flex", alignItems: "center" }}>
+              <button onClick={toggleMute} style={ctrlBtn("mute", false)} {...ctrlHandlers("mute")} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"}><VolumeIcon muted={muted} /></button>
               <input
                 type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
                 onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
                 aria-label="Volume"
-                style={{ width: 64, accentColor: "#fff", cursor: "pointer" }}
+                style={{ width: volumeHover ? 72 : 0, opacity: volumeHover ? 1 : 0, marginLeft: volumeHover ? 4 : 0, accentColor: "#fff", cursor: "pointer", transition: "width 200ms var(--ease-standard), opacity 150ms var(--ease-standard), margin-left 200ms var(--ease-standard)" }}
               />
-            </span>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, color: "rgba(255,255,255,.75)", marginLeft: 8 }}>{fmt(position)} <span style={{ opacity: .45 }}>/ 1:38:00</span></span>
-            <span style={{ marginLeft: 14, fontSize: 12, color: "rgba(255,255,255,.45)" }}>{scene.name}</span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "#fff" }}>{fmt(position)}</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "rgba(255,255,255,.4)" }}>/ 1:38:00</span>
+            </div>
+
+            {scene.name && <span style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,.55)", padding: "4px 11px", borderRadius: 999, background: "rgba(255,255,255,.06)" }}>{scene.name}</span>}
+
             <span style={{ flex: 1 }} />
 
-            <button onClick={toggleComments} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 38, padding: "0 14px", border: "none", borderRadius: 999, cursor: "pointer", background: panelOpen ? "#fff" : "rgba(255,255,255,.1)", color: panelOpen ? "#1A1B1E" : "#fff", transition: "all 150ms", fontFamily: "var(--font-ui)" }} title="Comments" aria-label="Comments">
+            <button onClick={toggleComments} style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 36, padding: "0 14px", border: "none", borderRadius: 999, cursor: "pointer", background: panelOpen ? "#fff" : hoverCtrl === "comments" ? "rgba(255,255,255,.16)" : "rgba(255,255,255,.08)", color: panelOpen ? "#1A1B1E" : "#fff", transition: "background 150ms var(--ease-standard), color 150ms var(--ease-standard)", fontFamily: "var(--font-ui)" }} {...ctrlHandlers("comments")} title="Comments" aria-label="Comments">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
               <span style={{ fontSize: 12.5, fontWeight: 700 }}>{totalComments}</span>
             </button>
-            <span style={{ width: 1, height: 20, background: "rgba(255,255,255,.14)", margin: "0 8px" }} />
-            <button onClick={() => setMenu((m) => (m === "speed" ? null : "speed"))} style={ctrlActive(menu === "speed")} title="Playback speed"><span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, fontWeight: 600 }}>{speed === 1 ? "1×" : speed + "×"}</span></button>
-            <button onClick={() => setMenu((m) => (m === "captions" ? null : "captions"))} style={ctrlActive(menu === "captions" || captions !== "Off")} aria-label="Captions"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M7 12h2m3 0h5" /><path d="M7 15h5m3 0h2" /></svg></button>
-            <button onClick={() => setMenu((m) => (m === "quality" ? null : "quality"))} style={ctrlActive(menu === "quality")} title="Quality"><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600 }}>{quality === "Auto" ? "Auto" : quality}</span></button>
-            <button onClick={() => setMenu((m) => (m === "settings" ? null : "settings"))} style={ctrlActive(menu === "settings")} aria-label="Settings"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg></button>
-            <button onClick={() => setFs((v) => !v)} style={ctrlActive(false)} aria-label="Fullscreen">
-              {!fs ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3" /></svg>
-                : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3" /></svg>}
+
+            {rowDivider}
+
+            <div style={cluster}>
+              <button onClick={() => setMenu((m) => (m === "speed" ? null : "speed"))} style={ctrlBtn("speed", menu === "speed")} {...ctrlHandlers("speed")} title="Playback speed"><span style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, fontWeight: 700 }}>{speed === 1 ? "1×" : speed + "×"}</span></button>
+              <button onClick={() => setMenu((m) => (m === "captions" ? null : "captions"))} style={ctrlBtn("captions", menu === "captions" || captions !== "Off")} {...ctrlHandlers("captions")} aria-label="Captions" title="Subtitles / CC"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M7 12h2m3 0h5" /><path d="M7 15h5m3 0h2" /></svg></button>
+              <button onClick={() => setMenu((m) => (m === "quality" ? null : "quality"))} style={ctrlBtn("quality", menu === "quality")} {...ctrlHandlers("quality")} title="Quality"><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700 }}>{quality === "Auto" ? "Auto" : quality}</span></button>
+              <button onClick={() => setMenu((m) => (m === "settings" ? null : "settings"))} style={ctrlBtn("settings", menu === "settings")} {...ctrlHandlers("settings")} aria-label="Settings" title="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg></button>
+            </div>
+
+            {rowDivider}
+
+            <button onClick={() => setFs((v) => !v)} style={ctrlBtn("fullscreen", false, 36)} {...ctrlHandlers("fullscreen")} aria-label="Fullscreen" title="Fullscreen">
+              {!fs ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3" /></svg>
+                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3" /></svg>}
             </button>
           </div>
         </div>

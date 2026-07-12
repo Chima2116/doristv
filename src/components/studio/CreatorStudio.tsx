@@ -1,7 +1,7 @@
 "use client";
 
 import { CSSProperties, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { StudioSidebar, type Section } from "./StudioSidebar";
 import { Icon } from "./icons";
@@ -29,10 +29,15 @@ function bg(id: number, pos?: string) {
   return `url("${imgs[id]}") center ${pos || "center"} / cover no-repeat`;
 }
 
+const SECTION_KEYS = new Set<Section>(["dashboard", "films", "analytics", "audience", "revenue", "comments", "community", "funding", "payouts", "settings"]);
+
 export function CreatorStudio() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { publishedFilms, showToast } = useApp();
-  const [section, setSection] = useState<Section>("dashboard");
+  const requestedSection = searchParams.get("section");
+  const initialSection = requestedSection && SECTION_KEYS.has(requestedSection as Section) ? (requestedSection as Section) : "dashboard";
+  const [section, setSection] = useState<Section>(initialSection);
   const [range, setRange] = useState<"7d" | "28d" | "90d">("28d");
   const [filmFilter, setFilmFilter] = useState("All");
   const [replyTo, setReplyTo] = useState<number | null>(null);

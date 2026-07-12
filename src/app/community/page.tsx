@@ -3,6 +3,7 @@
 import { useState, CSSProperties } from "react";
 import { useApp } from "@/lib/store";
 import { useHover } from "@/hooks/useHover";
+import { useViewport } from "@/hooks/useViewport";
 import { INITIAL_POSTS, POPULAR_CREATORS, initials, type ForumPost, type ForumReply } from "@/lib/data";
 import { chipStyle } from "@/lib/uiStyles";
 
@@ -45,6 +46,7 @@ function PostCard({ post, onOpen }: { post: ForumPost; onOpen: () => void }) {
 }
 
 export default function CommunityPage() {
+  const { isDesktop } = useViewport();
   const { followedSet, toggleFollow, showToast } = useApp();
   const [posts, setPosts] = useState<ForumPost[]>(INITIAL_POSTS);
   const [search, setSearch] = useState("");
@@ -91,18 +93,18 @@ export default function CommunityPage() {
   const sortLabels = { trending: "Trending", newest: "Newest", discussed: "Most discussed" };
 
   return (
-    <div style={{ width: "100%", maxWidth: 1080, margin: "0 auto", padding: "32px 32px 56px", display: "flex", flexDirection: "column", gap: 24, animation: "dorisRise 300ms var(--ease-standard)" }}>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 14 }}>
-        <div style={{ flex: 1 }}>
-          <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 38, letterSpacing: "-0.02em" }}>Community</h1>
+    <div style={{ width: "100%", maxWidth: 1080, margin: "0 auto", padding: "32px clamp(16px, 4vw, 32px) 56px", display: "flex", flexDirection: "column", gap: 24, animation: "dorisRise 300ms var(--ease-standard)" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 14, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(28px, 6vw, 38px)", letterSpacing: "-0.02em" }}>Community</h1>
           <p style={{ margin: "8px 0 0", fontSize: 14.5, color: "var(--text-secondary)", maxWidth: 560 }}>Where Nigerian independent film gets made — funding, crew calls, honest feedback, and the conversations behind the camera.</p>
         </div>
         <button onClick={() => setShowComposer(true)} style={{ minHeight: 46, padding: "0 22px", border: "none", borderRadius: 999, background: "var(--accent)", color: "var(--text-on-accent)", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ New post</button>
       </div>
 
-      <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", flexDirection: isDesktop ? "row" : "column", gap: 24, alignItems: isDesktop ? "flex-start" : "stretch" }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "var(--surface-1)", border: "1px solid var(--border-strong)", borderRadius: 999, padding: "0 14px", height: 42 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search discussions, crew calls, filmmakers" style={{ flex: 1, minWidth: 0, background: "none", border: "none", outline: "none", fontSize: 13.5, color: "var(--text-primary)", fontFamily: "var(--font-ui)" }} />
@@ -156,7 +158,7 @@ export default function CommunityPage() {
           </div>
         </div>
 
-        <aside style={{ width: 280, flex: "none", display: "flex", flexDirection: "column", gap: 16 }}>
+        <aside style={{ width: isDesktop ? 280 : "100%", flex: "none", display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ background: "linear-gradient(135deg, var(--surface-2), var(--surface-1))", border: "1px solid var(--border-subtle)", borderRadius: 16, padding: 18 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 14 }}>This week</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -202,7 +204,7 @@ export default function CommunityPage() {
       </div>
 
       {openThread && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setOpenThreadId(null); }} style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 32, zIndex: 70 }}>
+        <div onClick={(e) => { if (e.target === e.currentTarget) setOpenThreadId(null); }} style={{ position: "fixed", inset: 0, background: "rgba(10,11,13,.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "clamp(12px, 4vw, 32px)", zIndex: 70 }}>
           <div style={{ width: "100%", maxWidth: 680, maxHeight: "88vh", display: "flex", flexDirection: "column", background: "var(--surface-1)", border: "1px solid var(--border-strong)", borderRadius: 20, boxShadow: "0 40px 120px rgba(0,0,0,.7)", overflow: "hidden", animation: "dorisRise 260ms var(--ease-standard)" }}>
             <div style={{ flex: "none", padding: "22px 24px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

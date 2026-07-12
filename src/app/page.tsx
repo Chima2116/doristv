@@ -60,7 +60,7 @@ function RankCard({ filmId, rank }: { filmId: number; rank: number }) {
   const f = film(filmId);
   return (
     <div style={{ flex: "none", display: "flex", alignItems: "flex-end", gap: 4 }}>
-      <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 128, lineHeight: 0.7, letterSpacing: "-0.06em", color: "transparent", WebkitTextStroke: "2px rgba(255,255,255,.35)", marginRight: -14 }}>{rank}</span>
+      <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(56px, 16vw, 128px)", lineHeight: 0.7, letterSpacing: "-0.06em", color: "transparent", WebkitTextStroke: "2px rgba(255,255,255,.35)", marginRight: -14 }}>{rank}</span>
       <RankedFilmCard film={f} />
     </div>
   );
@@ -92,7 +92,7 @@ function CreatorSpotlightCard({ name, meta }: { name: string; meta: string }) {
   const { followedSet, toggleFollow } = useApp();
   const { openCreator } = useFilmActions();
   const following = !!followedSet[name];
-  const { style, handlers } = useHover({ width: 230, padding: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center", background: "var(--surface-1)", border: "1px solid var(--border-subtle)", borderRadius: 16, transition: "border-color 200ms var(--ease-standard)" } as CSSProperties, { border: "1px solid var(--border-strong)" });
+  const { style, handlers } = useHover({ width: "clamp(160px, 42vw, 230px)", flex: "none", padding: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center", background: "var(--surface-1)", border: "1px solid var(--border-subtle)", borderRadius: 16, transition: "border-color 200ms var(--ease-standard)" } as CSSProperties, { border: "1px solid var(--border-strong)" });
   return (
     <div style={style} {...handlers}>
       <button onClick={() => openCreator(name)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, fontFamily: "var(--font-ui)" }}>
@@ -163,7 +163,7 @@ export default function HomePage() {
               </span>
             </div>
             <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.6, color: "var(--text-secondary)", maxWidth: 520 }}>{hero.synopsis}</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
               <PlayPill onClick={() => openPlayer(hero.id)} hoverScale />
               <button onClick={() => openDetail(hero.id)} style={{ minHeight: 54, padding: "0 28px", border: "1.5px solid rgba(255,255,255,.7)", borderRadius: 999, background: "rgba(255,255,255,.06)", color: "var(--text-primary)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Details</button>
               <HeroWatchLaterButton filmId={hero.id} />
@@ -215,7 +215,7 @@ export default function HomePage() {
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Trending conversations</h2>
             <span style={{ fontSize: 12.5, color: "var(--text-tertiary)" }}>jump straight into the moment</span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))", gap: 16 }}>
             {CONVOS.map((c, i) => <ConvoCard key={i} c={c} />)}
           </div>
         </section>
@@ -238,7 +238,7 @@ export default function HomePage() {
 
         <section>
           <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 800, letterSpacing: "-0.01em" }}>Creator spotlight</h2>
-          <div style={{ display: "flex", gap: 16 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             {creators.map((c) => <CreatorSpotlightCard key={c.n} name={c.n} meta={c.m} />)}
           </div>
         </section>

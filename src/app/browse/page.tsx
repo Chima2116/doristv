@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useApp } from "@/lib/store";
-import { FilmCard, CARD_WIDTH } from "@/components/film/FilmCard";
+import { FilmCard } from "@/components/film/FilmCard";
 import { FILMS } from "@/lib/data";
 import { publishedToFilm } from "@/lib/uploadTypes";
 import { chipStyle } from "@/lib/uiStyles";
@@ -30,9 +30,9 @@ export default function BrowsePage() {
   const clearFilters = () => { setGenre("All"); setTier("All"); setSearchQ(""); };
 
   return (
-    <div style={{ width: "100%", maxWidth: 1360, padding: "28px 32px 56px", display: "flex", flexDirection: "column", gap: 18, animation: "dorisRise 300ms var(--ease-standard)" }}>
+    <div style={{ width: "100%", maxWidth: 1360, padding: "28px clamp(16px, 4vw, 32px) 56px", display: "flex", flexDirection: "column", gap: 18, animation: "dorisRise 300ms var(--ease-standard)" }}>
       <div>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 34, letterSpacing: "-0.02em" }}>Browse</h1>
+        <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(26px, 5vw, 34px)", letterSpacing: "-0.02em" }}>Browse</h1>
         <p style={{ margin: "6px 0 0", fontSize: 14, color: "var(--text-secondary)" }}>{films.length} film{films.length === 1 ? "" : "s"} · every film shows its price before you press play</p>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -51,7 +51,7 @@ export default function BrowsePage() {
           <button onClick={clearFilters} style={{ minHeight: 42, padding: "0 20px", border: "none", borderRadius: 999, background: "var(--accent)", color: "var(--text-on-accent)", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>Clear search &amp; filters</button>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, ${CARD_WIDTH}px)`, gap: "24px 16px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "24px 16px" }}>
           {films.map((f) => <FilmCard key={f.id} film={f} showTierBadge />)}
         </div>
       )}

@@ -10,6 +10,11 @@ import { tierBadge } from "@/lib/uiStyles";
 
 /** Every movie card on Doris shares one footprint — Editor's Picks set the standard. */
 export const CARD_WIDTH = 380;
+// Fluid card width — shrinks on phones/tablets so a shelf shows a peek of the next card
+// (signalling it scrolls) instead of one nearly-full-viewport card, and so fixed grids
+// (Browse, My Stuff, creator profiles) don't force horizontal overflow at CARD_WIDTH's
+// full 380px on a narrow screen. Caps at CARD_WIDTH so desktop is unchanged.
+export const CARD_WIDTH_CSS = `clamp(132px, 40vw, ${CARD_WIDTH}px)`;
 export const CARD_ASPECT = "16 / 10";
 export const CARD_HEIGHT_RATIO = 10 / 16;
 
@@ -100,12 +105,15 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVi
 
   const inLater = isInWatchLater(f.id);
   const liked = !!likedFilms[f.id];
-  const placement = rect ? computePlacement(rect, width, heightRatio) : null;
+  // Placement math uses the card's real rendered width (rect.width), not the numeric width
+  // prop — the card itself renders at a fluid, viewport-scaled CSS width (see restingStyle),
+  // so the prop alone no longer reflects what's actually on screen.
+  const placement = rect ? computePlacement(rect, rect.width, heightRatio) : null;
 
   // Stays fully visible AND interactive even while the portal is open. The portal is
   // always at least as big and paints above it via z-index, so the browser's normal
   // stacking-order hit-testing routes the mouse to the portal automatically.
-  const restingStyle: CSSProperties = { flex: "none", width, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)" };
+  const restingStyle: CSSProperties = { flex: "none", width: `clamp(132px, 40vw, ${width}px)`, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)" };
 
   return (
     <div

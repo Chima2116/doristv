@@ -2,6 +2,7 @@
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { fmt, initials } from "@/lib/format";
+import { useViewport } from "@/hooks/useViewport";
 import { DURATION, EMOJIS, INITIAL_GENERAL, INITIAL_MOMENTS, Moment, MomentType, PlayerReply, sceneAt, typeMeta } from "./moviePlayerData";
 
 type PanelView = "feed" | "moment";
@@ -208,6 +209,7 @@ export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: numb
   const [fs, setFs] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const redirectedRef = useRef(false);
+  const { isDesktop } = useViewport();
 
   // "The movie ended" is driven by the tracked position reaching the (real or fake) total
   // duration, not the underlying <video> tag's own end/loop — the demo clip is a short
@@ -596,7 +598,13 @@ export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: numb
   ]; }
 
   const glass: CSSProperties = { background: "rgba(10,11,13,.96)", backdropFilter: "blur(34px) saturate(1.4)", border: "1px solid rgba(255,255,255,.16)", boxShadow: "0 30px 90px rgba(0,0,0,.7)" };
-  const panelStyle: CSSProperties = panelExpanded
+  // Below desktop there's no room for a floating side panel — it becomes a full-width bottom
+  // sheet instead (like every mobile streaming app's comments drawer), with the expand
+  // toggle just growing its height rather than trying to widen a panel that's already
+  // edge-to-edge.
+  const panelStyle: CSSProperties = !isDesktop
+    ? { position: "absolute", left: 0, right: 0, bottom: 0, height: panelExpanded ? "88vh" : "64vh", display: "flex", flexDirection: "column", borderRadius: "20px 20px 0 0", overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "height 220ms var(--ease-standard)", ...glass }
+    : panelExpanded
     ? { position: "absolute", right: 26, top: 88, bottom: 108, width: "min(560px, 46vw)", display: "flex", flexDirection: "column", borderRadius: 20, overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "width 220ms var(--ease-standard)", ...glass }
     : { position: "absolute", right: 26, bottom: 108, width: 384, maxHeight: "min(600px, calc(100vh - 180px))", display: "flex", flexDirection: "column", borderRadius: 20, overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "width 220ms var(--ease-standard)", ...glass };
 
@@ -624,7 +632,7 @@ export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: numb
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(130% 100% at 50% 35%, transparent 45%, rgba(0,0,0,.5) 100%)", pointerEvents: "none" }} />
 
       {/* Top chrome */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", gap: 14, padding: "20px 26px 44px", background: "linear-gradient(to bottom, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 100%)", opacity: chromeOn ? 1 : 0, pointerEvents: chromeOn ? "auto" : "none", transition: "opacity 400ms var(--ease-standard)", zIndex: 20 }}>
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", gap: 14, padding: "16px clamp(14px, 4vw, 26px) 40px", background: "linear-gradient(to bottom, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 100%)", opacity: chromeOn ? 1 : 0, pointerEvents: chromeOn ? "auto" : "none", transition: "opacity 400ms var(--ease-standard)", zIndex: 20 }}>
         <button onClick={onExit} aria-label="Back" style={{ width: 40, height: 40, flex: "none", border: "none", borderRadius: 999, background: "rgba(10,10,12,.4)", backdropFilter: "blur(14px)", color: "#fff", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
@@ -705,7 +713,7 @@ export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: numb
           </div>
         )}
 
-        <div style={{ padding: "0 28px" }}>
+        <div style={{ padding: "0 clamp(12px, 4vw, 28px)" }}>
           <div ref={barRef} onMouseDown={onBarDown} style={{ position: "relative", cursor: sceneMode ? "crosshair" : "pointer" }}>
             <div style={{ position: "relative", height: 34, display: "flex", alignItems: "center" }}>
               <div style={{ position: "relative", width: "100%", height: dragging || hoverId != null ? 6 : 4, borderRadius: 999, background: "rgba(255,255,255,.16)", transition: "height 150ms var(--ease-standard)" }}>
@@ -770,32 +778,37 @@ export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: numb
             </div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 22, padding: "2px 0 18px" }}>
+          <div className="doris-scroll" style={{ display: "flex", alignItems: "center", gap: isDesktop ? 22 : 14, padding: "2px 0 18px", overflowX: isDesktop ? "visible" : "auto" }}>
             <button onClick={togglePlay} style={iconBtn("play", false, 36)} {...ctrlHandlers("play")} aria-label="Play/Pause">{playing ? <PauseIcon /> : <PlayIcon />}</button>
 
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: isDesktop ? 16 : 10, flex: "none" }}>
               <button onClick={back10} style={iconBtn("back", false)} {...ctrlHandlers("back")} aria-label="Back 10 seconds"><Replay10Icon /></button>
               <button onClick={fwd10} style={iconBtn("fwd", false)} {...ctrlHandlers("fwd")} aria-label="Forward 10 seconds"><Forward10Icon /></button>
             </div>
 
-            <div onMouseEnter={() => setVolumeHover(true)} onMouseLeave={() => setVolumeHover(false)} style={{ display: "inline-flex", alignItems: "center" }}>
-              <button onClick={toggleMute} style={iconBtn("mute", false)} {...ctrlHandlers("mute")} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"}><VolumeIcon muted={muted} /></button>
-              <input
-                type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
-                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-                aria-label="Volume"
-                style={{ width: volumeHover ? 72 : 0, opacity: volumeHover ? 1 : 0, marginLeft: volumeHover ? 6 : 0, accentColor: "#fff", cursor: "pointer", transition: "width 200ms var(--ease-standard), opacity 150ms var(--ease-standard), margin-left 200ms var(--ease-standard)" }}
-              />
-            </div>
+            {isDesktop && (
+              <div onMouseEnter={() => setVolumeHover(true)} onMouseLeave={() => setVolumeHover(false)} style={{ display: "inline-flex", alignItems: "center" }}>
+                <button onClick={toggleMute} style={iconBtn("mute", false)} {...ctrlHandlers("mute")} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"}><VolumeIcon muted={muted} /></button>
+                <input
+                  type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume}
+                  onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                  aria-label="Volume"
+                  style={{ width: volumeHover ? 72 : 0, opacity: volumeHover ? 1 : 0, marginLeft: volumeHover ? 6 : 0, accentColor: "#fff", cursor: "pointer", transition: "width 200ms var(--ease-standard), opacity 150ms var(--ease-standard), margin-left 200ms var(--ease-standard)" }}
+                />
+              </div>
+            )}
+            {!isDesktop && (
+              <button onClick={toggleMute} style={{ ...iconBtn("mute", false), flex: "none" }} {...ctrlHandlers("mute")} aria-label={muted ? "Unmute" : "Mute"} title={muted ? "Unmute" : "Mute"}><VolumeIcon muted={muted} /></button>
+            )}
 
-            <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 5, flex: "none" }}>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "#fff" }}>{fmt(position)}</span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "rgba(255,255,255,.4)" }}>/ {fmt(totalDuration)}</span>
             </div>
 
-            {scene.name && <span style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,.45)" }}>{scene.name}</span>}
+            {isDesktop && scene.name && <span style={{ fontSize: 11.5, fontWeight: 600, color: "rgba(255,255,255,.45)" }}>{scene.name}</span>}
 
-            <span style={{ flex: 1 }} />
+            {isDesktop && <span style={{ flex: 1 }} />}
 
             <button onClick={toggleComments} style={{ ...iconBtn("comments", panelOpen, 34), display: "inline-flex", alignItems: "center", gap: 7, width: "auto" }} {...ctrlHandlers("comments")} title="Comments" aria-label="Comments">
               <CommentIcon active={panelOpen} />

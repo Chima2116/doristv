@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useNow } from "@/hooks/useNow";
+import { useViewport } from "@/hooks/useViewport";
 import { FilmCard } from "@/components/film/FilmCard";
 import { ShelfRow } from "@/components/film/ShelfRow";
 import { filmBg, rating, initials, naira, FILMS, TAGLINES, CREATOR_BIOS } from "@/lib/data";
@@ -16,6 +17,7 @@ export default function FilmDetailPage() {
   const { router, rentOrPlay, openCreator, openPlayer } = useFilmActions();
   const { isInWatchLater, toggleWatchLater, likedFilms, toggleLikeFilm, followedSet, toggleFollow, rented, showToast, publishedFilms } = useApp();
   const now = useNow();
+  const { isDesktop } = useViewport();
 
   // Catalog films are numbered 1-8; anything else is a creator upload (see uploadTypes.ts)
   // and gets adapted into the same Film shape so every viewer-facing surface (this page,
@@ -64,11 +66,11 @@ export default function FilmDetailPage() {
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, #1A1B1E 1%, rgba(26,27,30,.35) 30%, rgba(26,27,30,0) 62%)" }} />
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 150, background: "linear-gradient(to bottom, rgba(26,27,30,.7), rgba(26,27,30,0))" }} />
 
-        <button onClick={() => router.back()} style={{ position: "absolute", top: 80, left: 48, zIndex: 3, display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(10,11,13,.4)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 999, padding: "9px 16px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(10px)" }}>
+        <button onClick={() => router.back()} style={{ position: "absolute", top: "clamp(64px, 9vw, 80px)", left: "clamp(16px, 4vw, 48px)", zIndex: 3, display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(10,11,13,.4)", border: "1px solid rgba(255,255,255,.16)", borderRadius: 999, padding: "9px 16px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", backdropFilter: "blur(10px)" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>Back
         </button>
 
-        <div style={{ position: "relative", zIndex: 2, maxWidth: 1360, margin: "0 auto", padding: "120px 48px 88px", minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+        <div style={{ position: "relative", zIndex: 2, maxWidth: 1360, margin: "0 auto", padding: "120px clamp(16px, 4vw, 48px) 88px", minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
           <div style={{ maxWidth: 600, display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={tb.style}>{tb.label}</span>
@@ -115,7 +117,7 @@ export default function FilmDetailPage() {
         </div>
       </section>
 
-      <div style={{ maxWidth: 1360, margin: "0 auto", padding: "8px 48px 72px", display: "flex", gap: 56, alignItems: "flex-start" }}>
+      <div style={{ maxWidth: 1360, margin: "0 auto", padding: "8px clamp(16px, 4vw, 48px) 72px", display: "flex", flexDirection: isDesktop ? "row" : "column", gap: isDesktop ? 56 : 36, alignItems: isDesktop ? "flex-start" : "stretch" }}>
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 44 }}>
           <section>
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-tertiary)" }}>Synopsis</span>
@@ -176,7 +178,7 @@ export default function FilmDetailPage() {
           </section>
         </div>
 
-        <aside style={{ width: 260, flex: "none", display: "flex", flexDirection: "column", gap: 2, paddingTop: 8 }}>
+        <aside style={{ width: isDesktop ? 260 : "100%", flex: "none", display: "flex", flexDirection: "column", gap: 2, paddingTop: 8 }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 14 }}>Film details</span>
           {detailSpecs.map((sp) => (
             <div key={sp.k} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "11px 0", borderBottom: "1px solid var(--border-subtle)", fontSize: 13 }}>

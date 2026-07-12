@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
-import { FilmCard, CARD_WIDTH } from "@/components/film/FilmCard";
+import { FilmCard } from "@/components/film/FilmCard";
 import { FILMS, initials, CREATOR_DB } from "@/lib/data";
 
 const ACTIVITY = [
@@ -23,13 +23,13 @@ export default function CreatorProfilePage() {
   const commentTotal = films.reduce((a, f) => a + f.comments, 0);
 
   return (
-    <div style={{ width: "100%", maxWidth: 1100, padding: "28px 32px 56px", display: "flex", flexDirection: "column", gap: 26, animation: "dorisRise 300ms var(--ease-standard)" }}>
+    <div style={{ width: "100%", maxWidth: 1100, padding: "28px clamp(16px, 4vw, 32px) 56px", display: "flex", flexDirection: "column", gap: 26, animation: "dorisRise 300ms var(--ease-standard)" }}>
       <section style={{ position: "relative", borderRadius: 14, overflow: "hidden", background: "linear-gradient(135deg, rgba(255,255,255,.14) 0%, rgba(255,255,255,.03) 45%, transparent 100%)", border: "1px solid var(--border-subtle)", padding: 28 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <span style={{ width: 88, height: 88, borderRadius: "50%", background: "var(--surface-3)", boxShadow: "0 0 0 3px var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "var(--accent)", fontFamily: "var(--font-display)" }}>{initials(name)}</span>
+          <span style={{ width: 88, height: 88, flex: "none", borderRadius: "50%", background: "var(--surface-3)", boxShadow: "0 0 0 3px var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800, color: "var(--accent)", fontFamily: "var(--font-display)" }}>{initials(name)}</span>
           <div style={{ flex: 1, minWidth: 220 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 36, letterSpacing: "-0.02em" }}>{name}</h1>
+              <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(26px, 5vw, 36px)", letterSpacing: "-0.02em" }}>{name}</h1>
               <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--text-on-accent)", background: "var(--accent)", borderRadius: 4, padding: "3px 8px" }}>Filmmaker</span>
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 13.5, color: "var(--text-secondary)" }}>{data.bio}</p>
@@ -48,7 +48,7 @@ export default function CreatorProfilePage() {
 
       <section>
         <h2 style={{ margin: "0 0 14px", fontSize: 20, fontWeight: 700 }}>Films by {name}</h2>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fill, ${CARD_WIDTH}px)`, gap: "24px 16px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "24px 16px" }}>
           {films.map((f) => <FilmCard key={f.id} film={f} showTierBadge />)}
         </div>
       </section>

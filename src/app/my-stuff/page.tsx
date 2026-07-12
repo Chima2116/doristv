@@ -6,7 +6,7 @@ import { useFilmActions } from "@/lib/actions";
 import { useNow } from "@/hooks/useNow";
 import { film, rating } from "@/lib/data";
 import { segStyle } from "@/lib/uiStyles";
-import { FilmCard, CARD_WIDTH } from "@/components/film/FilmCard";
+import { FilmCard } from "@/components/film/FilmCard";
 
 type Tab = "later" | "rentals" | "downloads";
 type Sort = "recent" | "title" | "rating";
@@ -63,7 +63,7 @@ function EmptyBlock({ title, body, cta, onCta }: { title: string; body: string; 
   );
 }
 
-const gridStyle: CSSProperties = { display: "grid", gridTemplateColumns: `repeat(auto-fill, ${CARD_WIDTH}px)`, gap: "24px 16px" };
+const gridStyle: CSSProperties = { display: "flex", flexWrap: "wrap", gap: "24px 16px" };
 
 export default function MyStuffPage() {
   const { router } = useFilmActions();
@@ -81,9 +81,9 @@ export default function MyStuffPage() {
   const mySortLabels: Record<Sort, string> = { recent: "Recently added", title: "Alphabetical", rating: "Top rated" };
 
   return (
-    <div style={{ width: "100%", maxWidth: 1180, margin: "0 auto", padding: "32px 32px 64px", display: "flex", flexDirection: "column", gap: 22, animation: "dorisRise 300ms var(--ease-standard)" }}>
+    <div style={{ width: "100%", maxWidth: 1180, margin: "0 auto", padding: "32px clamp(16px, 4vw, 32px) 64px", display: "flex", flexDirection: "column", gap: 22, animation: "dorisRise 300ms var(--ease-standard)" }}>
       <div>
-        <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 38, letterSpacing: "-0.02em" }}>My Stuff</h1>
+        <h1 style={{ margin: 0, fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "clamp(28px, 5vw, 38px)", letterSpacing: "-0.02em" }}>My Stuff</h1>
         <p style={{ margin: "8px 0 0", fontSize: 14, color: "var(--text-secondary)" }}>Your personal cinema — saved, rented, and ready to watch offline.</p>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>

@@ -267,6 +267,35 @@ export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: numb
     rootRef.current?.requestFullscreen?.().catch(() => {});
   };
 
+  // Tracks the device's real physical orientation so the player can force a landscape
+  // layout on phones/tablets — a video held in portrait wastes most of the screen on
+  // letterboxing, same reasoning every native video app auto-rotates for.
+  const [portrait, setPortrait] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: portrait)");
+    const update = () => setPortrait(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Best-effort native rotation: real fullscreen + a hardware orientation lock look and feel
+  // best where supported (Chrome/Android). Both require a "real" user gesture and Screen
+  // Orientation Lock has no Safari/iOS support at all, so this can silently fail — the CSS
+  // transform below (`rotateForLandscape`) is what actually guarantees the landscape layout
+  // everywhere, this is just a nicer-when-available layer on top of it.
+  useEffect(() => {
+    if (isDesktop) return;
+    rootRef.current?.requestFullscreen?.()
+      .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> })?.lock?.("landscape").catch(() => {}))
+      .catch(() => {});
+  }, [isDesktop]);
+
+  // On phones/tablets still held in portrait, rotate the whole player 90° with a classic
+  // CSS transform so it fills the screen in landscape regardless of whether the native
+  // fullscreen/orientation-lock attempt above actually succeeded.
+  const rotateForLandscape = !isDesktop && portrait;
+
   // Real playback, not a slow zoom on a still frame. Chrome's own intersection tracker for
   // muted, audioless video needs a paint cycle to confirm it's on-screen before it'll keep
   // playing — call play() too early and it silently re-pauses with "video-only background
@@ -602,8 +631,11 @@ export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: numb
   // sheet instead (like every mobile streaming app's comments drawer), with the expand
   // toggle just growing its height rather than trying to widen a panel that's already
   // edge-to-edge.
+  // % (not vh) so this still tracks the player's own box when rotateForLandscape has
+  // swapped that box's on-screen dimensions via a CSS transform — vh always measures the
+  // real, un-rotated device viewport and would size the sheet against the wrong axis.
   const panelStyle: CSSProperties = !isDesktop
-    ? { position: "absolute", left: 0, right: 0, bottom: 0, height: panelExpanded ? "88vh" : "64vh", display: "flex", flexDirection: "column", borderRadius: "20px 20px 0 0", overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "height 220ms var(--ease-standard)", ...glass }
+    ? { position: "absolute", left: 0, right: 0, bottom: 0, height: panelExpanded ? "88%" : "64%", display: "flex", flexDirection: "column", borderRadius: "20px 20px 0 0", overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "height 220ms var(--ease-standard)", ...glass }
     : panelExpanded
     ? { position: "absolute", right: 26, top: 88, bottom: 108, width: "min(560px, 46vw)", display: "flex", flexDirection: "column", borderRadius: 20, overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "width 220ms var(--ease-standard)", ...glass }
     : { position: "absolute", right: 26, bottom: 108, width: 384, maxHeight: "min(600px, calc(100vh - 180px))", display: "flex", flexDirection: "column", borderRadius: 20, overflow: "hidden", zIndex: 40, animation: "mpRise 300ms var(--ease-standard)", transition: "width 220ms var(--ease-standard)", ...glass };
@@ -611,8 +643,16 @@ export function MoviePlayer({ startAt, onExit, onEnded, film }: { startAt?: numb
   const composerPlaceholder = panelView === "moment" ? "Add to this moment…" : attach ? "Comment on this scene…" : "Share your thoughts on the film…";
   const attachLabel = attach ? fmt(attach.start) + (attach.end != null ? "–" + fmt(attach.end) : "") : "";
 
+  // Classic CSS "force landscape" rotation: an element sized to the viewport's height/width
+  // (swapped) and rotated 90° about its own top-left corner, offset by its own width so that
+  // corner lands back at the real viewport's origin — the net effect fills the screen with a
+  // landscape-shaped box regardless of the device's actual physical orientation.
+  const rootStyle: CSSProperties = rotateForLandscape
+    ? { position: "fixed", top: 0, left: "100%", width: "100vh", height: "100vw", transformOrigin: "0 0", transform: "rotate(90deg)", overflow: "hidden", background: "#000", fontFamily: "var(--font-ui)", color: "#fff", zIndex: 100 }
+    : { position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#000", fontFamily: "var(--font-ui)", color: "#fff" };
+
   return (
-    <div ref={rootRef} onMouseMove={wake} style={{ position: "relative", width: "100%", height: "100vh", overflow: "hidden", background: "#000", fontFamily: "var(--font-ui)", color: "#fff" }}>
+    <div ref={rootRef} onMouseMove={wake} style={rootStyle}>
       {videoError ? (
         <div style={{ position: "absolute", inset: 0, background: `url("${errorBg}") ${scene.pos} / cover no-repeat`, transform: playing ? "scale(1.06)" : "scale(1.0)", transition: "transform 24s linear" }} />
       ) : (

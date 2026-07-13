@@ -103,7 +103,7 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVi
   const { isInWatchLater, toggleWatchLater, likedFilms, toggleLikeFilm } = useApp();
   const { openDetail } = useFilmActions();
   const { triggerRef, active, settled, rect, open, scheduleClose } = useCardExpand<HTMLDivElement>();
-  const { isMobile } = useViewport();
+  const { isMobile, isDesktop } = useViewport();
 
   const inLater = isInWatchLater(f.id);
   const liked = !!likedFilms[f.id];
@@ -119,11 +119,11 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVi
   // stack, one full-width poster + title per row instead of a cramped multi-up grid.
   const restingStyle: CSSProperties = { flex: isMobile ? "1 1 auto" : "none", width: isMobile ? "100%" : `clamp(132px, 40vw, ${width}px)`, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)" };
 
-  // Hover-expand is a desktop affordance — touch has no real "hover", so a tap on mobile
-  // would otherwise fire mouseenter (opening the expand portal) a beat before the click
-  // navigates, showing a flash of the wrong UI. Skip wiring hover entirely on mobile so a
-  // tap goes straight to the detail page.
-  const hoverHandlers = isMobile ? {} : { onMouseEnter: open, onMouseLeave: scheduleClose, onFocus: open, onBlur: scheduleClose };
+  // Hover-expand is a desktop affordance — touch has no real "hover", so a tap on mobile or
+  // tablet would otherwise fire mouseenter (opening the expand portal) a beat before the
+  // click navigates, showing a flash of the wrong UI. Skip wiring hover entirely below
+  // desktop width so a tap goes straight to the detail page.
+  const hoverHandlers = isDesktop ? { onMouseEnter: open, onMouseLeave: scheduleClose, onFocus: open, onBlur: scheduleClose } : {};
 
   return (
     <div
@@ -139,7 +139,7 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVi
         {poster}
       </span>
 
-      {!isMobile && active && rect && placement && typeof document !== "undefined" && createPortal(
+      {isDesktop && active && rect && placement && typeof document !== "undefined" && createPortal(
         <ExpandedCard
           f={f}
           rect={rect}

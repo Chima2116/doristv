@@ -119,24 +119,27 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVi
   // stack, one full-width poster + title per row instead of a cramped multi-up grid.
   const restingStyle: CSSProperties = { flex: isMobile ? "1 1 auto" : "none", width: isMobile ? "100%" : `clamp(132px, 40vw, ${width}px)`, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)" };
 
+  // Hover-expand is a desktop affordance — touch has no real "hover", so a tap on mobile
+  // would otherwise fire mouseenter (opening the expand portal) a beat before the click
+  // navigates, showing a flash of the wrong UI. Skip wiring hover entirely on mobile so a
+  // tap goes straight to the detail page.
+  const hoverHandlers = isMobile ? {} : { onMouseEnter: open, onMouseLeave: scheduleClose, onFocus: open, onBlur: scheduleClose };
+
   return (
     <div
       ref={triggerRef}
       role="button"
       tabIndex={0}
       onClick={() => openDetail(f.id)}
-      onMouseEnter={open}
-      onMouseLeave={scheduleClose}
-      onFocus={open}
-      onBlur={scheduleClose}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(f.id); } }}
       style={restingStyle}
+      {...hoverHandlers}
     >
       <span style={{ position: "relative", display: "block", width: "100%", aspectRatio: cssAspect, overflow: "hidden", background: filmBg(f, "40%") }}>
         {poster}
       </span>
 
-      {active && rect && placement && typeof document !== "undefined" && createPortal(
+      {!isMobile && active && rect && placement && typeof document !== "undefined" && createPortal(
         <ExpandedCard
           f={f}
           rect={rect}

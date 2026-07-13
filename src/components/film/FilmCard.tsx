@@ -5,15 +5,16 @@ import { createPortal } from "react-dom";
 import { useApp } from "@/lib/store";
 import { useFilmActions } from "@/lib/actions";
 import { useCardExpand } from "@/hooks/useCardExpand";
+import { useViewport } from "@/hooks/useViewport";
 import { filmBg, film, rating, type Film } from "@/lib/data";
 import { tierBadge } from "@/lib/uiStyles";
 
 /** Every movie card on Doris shares one footprint — Editor's Picks set the standard. */
 export const CARD_WIDTH = 380;
-// Fluid card width — shrinks on phones/tablets so a shelf shows a peek of the next card
-// (signalling it scrolls) instead of one nearly-full-viewport card, and so fixed grids
-// (Browse, My Stuff, creator profiles) don't force horizontal overflow at CARD_WIDTH's
-// full 380px on a narrow screen. Caps at CARD_WIDTH so desktop is unchanged.
+// Fluid card width on tablet — shrinks so a shelf shows a peek of the next card (signalling
+// it scrolls) instead of one nearly-full-viewport card. Caps at CARD_WIDTH so desktop is
+// unchanged. On phones the card goes full-width instead (see MediaCard) — MUBI-style, one
+// per row with real breathing room around the title, not a cramped multi-up grid.
 export const CARD_WIDTH_CSS = `clamp(132px, 40vw, ${CARD_WIDTH}px)`;
 export const CARD_ASPECT = "16 / 10";
 export const CARD_HEIGHT_RATIO = 10 / 16;
@@ -102,6 +103,7 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVi
   const { isInWatchLater, toggleWatchLater, likedFilms, toggleLikeFilm } = useApp();
   const { openDetail } = useFilmActions();
   const { triggerRef, active, settled, rect, open, scheduleClose } = useCardExpand<HTMLDivElement>();
+  const { isMobile } = useViewport();
 
   const inLater = isInWatchLater(f.id);
   const liked = !!likedFilms[f.id];
@@ -112,8 +114,10 @@ function MediaCard({ f, width, cssAspect, heightRatio, poster, onPlay, previewVi
 
   // Stays fully visible AND interactive even while the portal is open. The portal is
   // always at least as big and paints above it via z-index, so the browser's normal
-  // stacking-order hit-testing routes the mouse to the portal automatically.
-  const restingStyle: CSSProperties = { flex: "none", width: `clamp(132px, 40vw, ${width}px)`, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)" };
+  // stacking-order hit-testing routes the mouse to the portal automatically. On phones the
+  // card fills its row instead of using the tablet/desktop clamp — MUBI-style single-column
+  // stack, one full-width poster + title per row instead of a cramped multi-up grid.
+  const restingStyle: CSSProperties = { flex: isMobile ? "1 1 auto" : "none", width: isMobile ? "100%" : `clamp(132px, 40vw, ${width}px)`, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "var(--font-ui)", color: "var(--text-primary)" };
 
   return (
     <div

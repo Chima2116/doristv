@@ -1,6 +1,7 @@
 "use client";
 
 import { CSSProperties, ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { useViewport } from "@/hooks/useViewport";
 
 function ChevronIcon({ dir }: { dir: "left" | "right" }) {
   return (
@@ -22,6 +23,7 @@ const arrowBase: CSSProperties = {
  * hover-revealed arrow buttons that page by ~90% of the visible width.
  */
 export function ShelfRow({ children, gap = 12 }: { children: ReactNode; gap?: number }) {
+  const { isMobile } = useViewport();
   const trackRef = useRef<HTMLDivElement>(null);
   const [hovering, setHovering] = useState(false);
   const [atStart, setAtStart] = useState(true);
@@ -51,6 +53,13 @@ export function ShelfRow({ children, gap = 12 }: { children: ReactNode; gap?: nu
     if (!el) return;
     el.scrollBy({ left: dir * el.clientWidth * 0.9, behavior: "smooth" });
   };
+
+  // On phones there's no room for a horizontal carousel to breathe — MUBI's mobile browse
+  // stacks one full-width poster per row instead, so titles get real space instead of
+  // being squeezed into a swipeable strip of small tiles.
+  if (isMobile) {
+    return <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>{children}</div>;
+  }
 
   return (
     <div style={{ position: "relative" }} onMouseEnter={() => setHovering(true)} onMouseLeave={() => setHovering(false)}>
